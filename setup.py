@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="diseaz-dsaflow",
-    version="0.0.2",
+    version="0.0.1",
     author="Dmitry Azhichakov",
     author_email="dazhichakov@gmail.com",
     description="Tools for my personal workflow",
@@ -23,4 +23,9 @@ setuptools.setup(
     install_requires=[
         "diseaz-dsapy @ git+https://github.com/diseaz/dsapy.git",
     ],
+    entry_points={
+        "console_scripts": [
+            "dsaflow=dsaflow.scripts.dsaflow:run",
+        ],
+    },
 )
