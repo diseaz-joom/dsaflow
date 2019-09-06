@@ -190,6 +190,17 @@ class GitTool(object):
         tool(['git', 'config', '--local', full_key, value])
 
 
+class SyncMixin(object):
+    def sync(self):
+        branch = self.git_rev_name()
+
+        tool(['git', 'fetch', '--all', '--prune'])
+        tool(['git', 'checkout', '--detach', 'HEAD'])
+        tool(['git', 'branch', '--force', 'develop', 'origin/develop'])
+        tool(['git', 'branch', '--force', 'master', 'origin/master'])
+        tool(['git', 'checkout', branch])
+
+
 class GitRevName(GitTool, app.Command):
     '''Name of the current git revision.'''
     name='git-rev-name'
@@ -284,7 +295,7 @@ class Branches(GitTool, app.Command):
             print(b)
 
 
-class Start(GitTool, app.Command):
+class Start(SyncMixin, GitTool, app.Command):
     '''Start a new branch.'''
     name='start'
 
@@ -311,6 +322,11 @@ class Start(GitTool, app.Command):
             '--public-prefix',
             help='Branch prefix for public branch',
         )
+        parser.add_argument(
+            '--sync',
+            action='store_true',
+            help='Sync before starting',
+        )
 
     def main(self):
         branch = self.flags.branch
@@ -326,6 +342,9 @@ class Start(GitTool, app.Command):
         fork_from = refs_config.get(fork_from, fork_from)
         if not fork_from:
             raise Error('Do not know what branch to fork')
+
+        if self.flags.sync:
+            self.sync()
 
         local_branch = pdict.safe_join([branch, local_suffix])
         self.fork_branch(local_branch, from_branch=fork_from)
@@ -382,17 +401,6 @@ class Publish(GitTool, app.Command):
             tool(['xdg-open',
                   '{v[repo]}/compare/{v[fork_from]}...{v[pub_branch]}?expand=1'.format(v=locals()),
             ])
-
-
-class SyncMixin(object):
-    def sync(self):
-        branch = self.git_rev_name()
-
-        tool(['git', 'fetch', '--all', '--prune'])
-        tool(['git', 'checkout', '--detach', 'HEAD'])
-        tool(['git', 'branch', '--force', 'develop', 'origin/develop'])
-        tool(['git', 'branch', '--force', 'master', 'origin/master'])
-        tool(['git', 'checkout', branch])
 
 
 class Sync(SyncMixin, GitTool, app.Command):
