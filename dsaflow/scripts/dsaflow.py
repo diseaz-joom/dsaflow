@@ -3,6 +3,7 @@
 
 """Program description."""
 
+import itertools
 import locale
 import logging
 import os
@@ -115,9 +116,11 @@ class GitTool(object):
         if branch is None:
             branch = self.git_rev_name()
 
-        prefix = 'branch.{}'.format(branch)
         config = self.get_config()
-        return pdict.PrefixView(config, prefix=prefix)
+        return (
+            pdict.PrefixView(config, prefix='branch.{}'.format(branch)),
+            pdict.PrefixView(config, prefix='dsaflow.branch.{}'.format(branch)),
+        )
 
     branch_re = re.compile('^(?P<current>[> ]) (?P<stgit>[s ])(?P<protected>[p ])\t(?P<branch>[^ |]*)[ ]*  \| (?P<description>.*)$', re.M)
 
@@ -281,8 +284,11 @@ class BranchConfig(GitTool, app.Command):
         )
 
     def main(self):
-        branch_view = self.get_branch_config(self.flags.branch)
-        for name, value in branch_view.items():
+        git_branch_config, dsaflow_branch_config = self.get_branch_config(self.flags.branch)
+
+        items = itertools.chain(git_branch_config.items(), dsaflow_branch_config.items())
+
+        for name, value in items:
             print('{}={}'.format(name, value))
 
 
