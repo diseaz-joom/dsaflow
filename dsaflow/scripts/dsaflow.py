@@ -219,6 +219,15 @@ class InitFlow(GitTool, app.Command):
     '''Initialize flow configuration.'''
     name='init-flow'
 
+    @classmethod
+    def add_arguments(cls, parser):
+        super().add_arguments(parser)
+
+        parser.add_argument(
+            '--github',
+            help='Github repo page URL (https://github.com/USER/REPO)',
+        )
+
     def clean_prefix(self, prefix):
         config_view = self.get_config_view(prefix=prefix)
         for k in config_view.keys():
@@ -242,6 +251,10 @@ class InitFlow(GitTool, app.Command):
 
         tool(['git', 'config', '--local', 'dsaflow.type.junk.local-suffix', ''])
         tool(['git', 'config', '--local', 'dsaflow.type.junk.public-prefix', 'feature'])
+
+        self.clean_prefix('dsaflow.repo')
+        if self.flags.github:
+            tool(['git', 'config', '--local', 'dsaflow.repo.github', self.flags.github])
 
 
 class BranchConfig(GitTool, app.Command):
@@ -335,6 +348,11 @@ class Publish(GitTool, app.Command):
             action='store_true',
             help='Publish from scratch',
         )
+        parser.add_argument(
+            '--pr',
+            action='store_true',
+            help='Create PR',
+        )
 
     def main(self):
         local_branch = self.git_rev_name()
@@ -357,12 +375,17 @@ class Publish(GitTool, app.Command):
             tool(['stg', 'publish', pub_branch])
         tool(['git', 'push', '--force', '--set-upstream', 'origin', '{0}:{0}'.format(pub_branch)])
 
+        config = self.get_config_view('dsaflow.repo')
+        repo = config.get('github')
+        _logger.debug('Repo: %r', repo)
+        if repo and self.flags.pr:
+            tool(['xdg-open',
+                  '{v[repo]}/compare/{v[fork_from]}...{v[pub_branch]}?expand=1'.format(v=locals()),
+            ])
 
-class Sync(GitTool, app.Command):
-    '''Pull changes from upstream.'''
-    name='sync'
 
-    def main(self):
+class SyncMixin(object):
+    def sync(self):
         branch = self.git_rev_name()
 
         tool(['git', 'fetch', '--all', '--prune'])
@@ -372,11 +395,32 @@ class Sync(GitTool, app.Command):
         tool(['git', 'checkout', branch])
 
 
-class Rebase(GitTool, app.Command):
+class Sync(SyncMixin, GitTool, app.Command):
+    '''Pull changes from upstream.'''
+    name='sync'
+
+    def main(self):
+        self.sync()
+
+
+class Rebase(SyncMixin, GitTool, app.Command):
     '''Rebase branch to an updated fork source.'''
     name='rebase'
 
+    @classmethod
+    def add_arguments(cls, parser):
+        super().add_arguments(parser)
+
+        parser.add_argument(
+            '--sync',
+            action='store_true',
+            help='Sync before rebase',
+        )
+
     def main(self):
+        if self.flags.sync:
+            self.sync()
+
         local_branch = self.git_rev_name()
 
         local_suffix = self.get_branch_key(local_branch, 'local-suffix')
