@@ -420,6 +420,11 @@ class Rebase(SyncMixin, GitTool, app.Command):
         super().add_arguments(parser)
 
         parser.add_argument(
+            '--new-base',
+            help='A new base for the branch',
+        )
+
+        parser.add_argument(
             '--sync',
             action='store_true',
             help='Sync before rebase',
@@ -434,13 +439,18 @@ class Rebase(SyncMixin, GitTool, app.Command):
         local_suffix = self.get_branch_key(local_branch, 'local-suffix')
         public_prefix = self.get_branch_key(local_branch, 'public-prefix')
         fork_from = self.get_branch_key(local_branch, 'fork-from')
+        new_base = self.flags.new_base or fork_from
 
         refs_config = self.get_config_view('dsaflow.refs')
-        fork_from = refs_config.get(fork_from, fork_from)
-        if not fork_from:
-            raise Error('Do not know what source branch was')
+        fork_from_ref = refs_config.get(fork_from, fork_from)
+        new_base_ref = refs_config.get(new_base, new_base)
+        if not new_base_ref:
+            raise Error('Do not know where to rebase to')
 
-        tool(['stg', 'rebase', fork_from])
+        tool(['stg', 'rebase', new_base_ref])
+
+        if new_base_ref != fork_from_ref:
+            self.set_branch_key(local_branch, 'fork-from', new_base)
 
 
 def tool(args, check=True, stdout=None, stderr=None):
