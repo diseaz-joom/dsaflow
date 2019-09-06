@@ -3,6 +3,7 @@
 
 """Program description."""
 
+import itertools
 import locale
 import logging
 import os
@@ -115,9 +116,11 @@ class GitTool(object):
         if branch is None:
             branch = self.git_rev_name()
 
-        prefix = 'branch.{}'.format(branch)
         config = self.get_config()
-        return pdict.PrefixView(config, prefix=prefix)
+        return (
+            pdict.PrefixView(config, prefix='branch.{}'.format(branch)),
+            pdict.PrefixView(config, prefix='dsaflow.branch.{}'.format(branch)),
+        )
 
     branch_re = re.compile('^(?P<current>[> ]) (?P<stgit>[s ])(?P<protected>[p ])\t(?P<branch>[^ |]*)[ ]*  \| (?P<description>.*)$', re.M)
 
@@ -281,8 +284,11 @@ class BranchConfig(GitTool, app.Command):
         )
 
     def main(self):
-        branch_view = self.get_branch_config(self.flags.branch)
-        for name, value in branch_view.items():
+        git_branch_config, dsaflow_branch_config = self.get_branch_config(self.flags.branch)
+
+        items = itertools.chain(git_branch_config.items(), dsaflow_branch_config.items())
+
+        for name, value in items:
             print('{}={}'.format(name, value))
 
 
@@ -420,6 +426,11 @@ class Rebase(SyncMixin, GitTool, app.Command):
         super().add_arguments(parser)
 
         parser.add_argument(
+            '--new-base',
+            help='A new base for the branch',
+        )
+
+        parser.add_argument(
             '--sync',
             action='store_true',
             help='Sync before rebase',
@@ -434,13 +445,18 @@ class Rebase(SyncMixin, GitTool, app.Command):
         local_suffix = self.get_branch_key(local_branch, 'local-suffix')
         public_prefix = self.get_branch_key(local_branch, 'public-prefix')
         fork_from = self.get_branch_key(local_branch, 'fork-from')
+        new_base = self.flags.new_base or fork_from
 
         refs_config = self.get_config_view('dsaflow.refs')
-        fork_from = refs_config.get(fork_from, fork_from)
-        if not fork_from:
-            raise Error('Do not know what source branch was')
+        fork_from_ref = refs_config.get(fork_from, fork_from)
+        new_base_ref = refs_config.get(new_base, new_base)
+        if not new_base_ref:
+            raise Error('Do not know where to rebase to')
 
-        tool(['stg', 'rebase', fork_from])
+        tool(['stg', 'rebase', new_base_ref])
+
+        if new_base_ref != fork_from_ref:
+            self.set_branch_key(local_branch, 'fork-from', new_base)
 
 
 def tool(args, check=True, stdout=None, stderr=None):
