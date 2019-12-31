@@ -81,9 +81,12 @@ class GitTool(object):
         except IndexError:
             raise Error('Failed to find branch for {!r}'.format(name))
 
-    def fork_branch(self, name, from_branch):
+    def fork_branch(self, name, from_branch, track_branch=None):
         from_branch = self.find_branch(from_branch)
         tool(['git', 'co', '-b', name, from_branch])
+        if track_branch:
+            track_branch = self.find_branch(track_branch)
+            tool(['git', 'branch', '--set-upstream-to={}'.format(track_branch), name])
         tool(['stg', 'init'])
         tool(['stg', 'new', '--message=main'])
 
@@ -192,6 +195,10 @@ class GitTool(object):
         full_key = pdict.safe_join(['dsaflow.branch', branch, key])
         tool(['git', 'config', '--local', full_key, value])
 
+    def set_branch_key_v2(self, branch, key, value):
+        full_key = pdict.safe_join(['branch', branch, 'jflow', key])
+        tool(['git', 'config', '--local', full_key, value])
+
 
 class SyncMixin(object):
     def sync(self):
@@ -202,6 +209,7 @@ class SyncMixin(object):
         tool(['git', 'branch', '--force', 'develop', 'origin/develop'])
         tool(['git', 'branch', '--force', 'master', 'origin/master'])
         tool(['git', 'checkout', branch])
+        tool(['green-develop-update'])
 
 
 class GitRevName(GitTool, app.Command):
@@ -253,7 +261,8 @@ class InitFlow(GitTool, app.Command):
         tool(['git', 'config', '--local', 'dsaflow.ref.master', 'master'])
 
         self.clean_prefix('dsaflow.type')
-        tool(['git', 'config', '--local', 'dsaflow.type._default.fork-from', 'develop'])
+        tool(['git', 'config', '--local', 'dsaflow.type._default.track-branch', 'develop'])
+        tool(['git', 'config', '--local', 'dsaflow.type._default.fork-from', 'green-develop'])
         tool(['git', 'config', '--local', 'dsaflow.type._default.local-suffix', 'local'])
 
         tool(['git', 'config', '--local', 'dsaflow.type.quick.local-suffix', ''])
@@ -261,9 +270,8 @@ class InitFlow(GitTool, app.Command):
         tool(['git', 'config', '--local', 'dsaflow.type.hotfix.fork-from', 'master'])
 
         tool(['git', 'config', '--local', 'dsaflow.type.relfix.fork-from', 'release'])
-        tool(['git', 'config', '--local', 'dsaflow.type.relfix.public-prefix', 'feature'])
+        tool(['git', 'config', '--local', 'dsaflow.type.relfix.public-prefix', 'hotfix'])
 
-        tool(['git', 'config', '--local', 'dsaflow.type.junk.local-suffix', ''])
         tool(['git', 'config', '--local', 'dsaflow.type.junk.public-prefix', 'feature'])
 
         self.clean_prefix('dsaflow.repo')
@@ -317,8 +325,12 @@ class Start(SyncMixin, GitTool, app.Command):
             help='Name of the branch to start',
         )
         parser.add_argument(
-            '--fork-from',
+            '--fork-from', '--fork',
             help='Fork branch from this branch',
+        )
+        parser.add_argument(
+            '--track-branch', '--upstream',
+            help='Branch to set as upstream after fork',
         )
         parser.add_argument(
             '--local-suffix',
@@ -343,21 +355,35 @@ class Start(SyncMixin, GitTool, app.Command):
         local_suffix = self.get_prefix_key(branch_prefix, 'local-suffix', override=self.flags.local_suffix, default='')
         public_prefix = self.get_prefix_key(branch_prefix, 'public-prefix', override=self.flags.public_prefix, default=branch_prefix)
         fork_from = self.get_prefix_key(branch_prefix, 'fork-from', override=self.flags.fork_from)
+        track_branch = self.get_prefix_key(branch_prefix, 'track-branch', override=self.flags.track_branch)
 
         refs_config = self.get_config_view('dsaflow.refs')
         fork_from = refs_config.get(fork_from, fork_from)
+        track_branch = refs_config.get(track_branch, track_branch)
         if not fork_from:
             raise Error('Do not know what branch to fork')
+
+        effective_fork_from = track_branch or fork_from
 
         if self.flags.sync:
             self.sync()
 
         local_branch = pdict.safe_join([branch, local_suffix])
-        self.fork_branch(local_branch, from_branch=fork_from)
+        self.fork_branch(local_branch, from_branch=fork_from, track_branch=track_branch)
 
         self.set_branch_key(local_branch, 'local-suffix', local_suffix)
         self.set_branch_key(local_branch, 'public-prefix', public_prefix)
-        self.set_branch_key(local_branch, 'fork-from', fork_from)
+        self.set_branch_key(local_branch, 'fork-from', effective_fork_from)
+        self.set_branch_key(local_branch, 'version', '1')
+
+        # Prepare to migration
+        from_branch = fork_from
+        upstream_branch = effective_fork_from
+        self.set_branch_key_v2(local_branch, 'from', from_branch)
+        self.set_branch_key_v2(local_branch, 'upstream', upstream_branch)
+        pub_branch = self.branch_replace_prefix(branch, public_prefix)
+        self.set_branch_key_v2(local_branch, 'public', pub_branch)
+        self.set_branch_key_v2(local_branch, pdict.safe_join(['merge', upstream_branch]), 'true')
 
 
 class Publish(GitTool, app.Command):
@@ -378,12 +404,25 @@ class Publish(GitTool, app.Command):
             action='store_true',
             help='Create PR',
         )
+        parser.add_argument(
+            '--pub-suffix',
+            help='Override public branch suffix',
+        )
+        parser.add_argument(
+            '--pub-prefix',
+            help='Override public branch prefix',
+        )
+        parser.add_argument(
+            '--local',
+            action='store_true',
+            help='Only update local public branch',
+        )
 
     def main(self):
         local_branch = self.git_rev_name()
 
         local_suffix = self.get_branch_key(local_branch, 'local-suffix')
-        public_prefix = self.get_branch_key(local_branch, 'public-prefix')
+        public_prefix = (self.flags.pub_prefix or '') or self.get_branch_key(local_branch, 'public-prefix')
         fork_from = self.get_branch_key(local_branch, 'fork-from')
 
         refs_config = self.get_config_view('dsaflow.refs')
@@ -393,11 +432,17 @@ class Publish(GitTool, app.Command):
 
         pub_branch = strip_suffix('.' + local_suffix, local_branch)
         pub_branch = self.branch_replace_prefix(pub_branch, public_prefix)
+        if self.flags.pub_suffix:
+            pub_branch += '.' + self.flags.pub_suffix
 
         if pub_branch != local_branch:
             if self.flags.from_scratch and self.branch_exists(pub_branch):
                 tool(['git', 'branch', '--delete', '--force', pub_branch])
             tool(['stg', 'publish', pub_branch])
+
+        if self.flags.local:
+            return
+
         tool(['git', 'push', '--force', '--set-upstream', 'origin', '{0}:{0}'.format(pub_branch)])
 
         config = self.get_config_view('dsaflow.repo')
@@ -426,10 +471,13 @@ class Rebase(SyncMixin, GitTool, app.Command):
         super().add_arguments(parser)
 
         parser.add_argument(
+            '--to',
+            help='Rebase to this branch but do not track',
+        )
+        parser.add_argument(
             '--new-base',
             help='A new base for the branch',
         )
-
         parser.add_argument(
             '--sync',
             action='store_true',
@@ -445,18 +493,41 @@ class Rebase(SyncMixin, GitTool, app.Command):
         local_suffix = self.get_branch_key(local_branch, 'local-suffix')
         public_prefix = self.get_branch_key(local_branch, 'public-prefix')
         fork_from = self.get_branch_key(local_branch, 'fork-from')
-        new_base = self.flags.new_base or fork_from
+        new_fork_from = self.flags.new_base or fork_from
+        new_base = self.flags.to or new_fork_from
 
         refs_config = self.get_config_view('dsaflow.refs')
         fork_from_ref = refs_config.get(fork_from, fork_from)
+        new_fork_from_ref = refs_config.get(new_fork_from, new_fork_from)
+        if not new_fork_from_ref:
+            raise Error('Do not know what branch to track')
         new_base_ref = refs_config.get(new_base, new_base)
         if not new_base_ref:
             raise Error('Do not know where to rebase to')
 
-        tool(['stg', 'rebase', new_base_ref])
+        tool(['stg', 'rebase', '--merged', new_base_ref])
 
-        if new_base_ref != fork_from_ref:
-            self.set_branch_key(local_branch, 'fork-from', new_base)
+        if new_fork_from_ref != fork_from_ref:
+            self.set_branch_key(local_branch, 'fork-from', new_fork_from_ref)
+
+        tool(['git', 'clean', '-d', '--force'])
+
+
+class UpgradeBranches(GitTool, app.Command):
+    '''Upgrade branches to current dsaflow version.'''
+    name='upgrade-branches'
+
+    def main(self):
+        prefix = 'dsaflow.branch'
+        cfg = self.get_config_view(prefix='dsaflow.branch')
+        branches = set()
+        for k in cfg.keys():
+            branch_split = k.split('.')
+            branch = '.'.join(branch_split[:-1])
+            branches.add(branch)
+
+        for b in sorted(branches):
+            tool(['git', 'config', '--local', 'dsaflow.branch.{}.version'.format(b), '1'])
 
 
 def tool(args, check=True, stdout=None, stderr=None):
