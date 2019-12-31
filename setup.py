@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="diseaz-dsaflow",
-    version="0.0.1",
+    version="0.0.2",
     author="Dmitry Azhichakov",
     author_email="dazhichakov@gmail.com",
     description="Tools for my personal workflow",
@@ -26,6 +26,7 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "dsaflow=dsaflow.scripts.dsaflow:run",
+            "jflow=jflow.scripts.jflow:run",
         ],
     },
 )
