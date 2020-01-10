@@ -7,6 +7,10 @@ import jflow
 from jflow import run
 
 
+class Error(Exception):
+    '''Base class for errors in the module.'''
+
+
 class Git(run.Cmd):
     def git_config_set(self, key, value):
         self.cmd_action(['git', 'config', '--local', '--replace-all', str(key), str(value)])
@@ -44,6 +48,24 @@ class Git(run.Cmd):
             if not m:
                 continue
             yield Value(name, value, key=m.group(1))
+
+    def _git_current_ref(self, symbolic=True, short=False):
+        cmd = ['git', 'rev-parse']
+        if symbolic:
+            cmd.append('--symbolic-full-name')
+        if short:
+            cmd.append('--abbrev-ref' if symbolic else '--short')
+        cmd.append('HEAD')
+        refs = self.cmd_output(cmd)
+        if len(refs) != 1:
+            raise Error('Unexpected git output: %r', refs)
+        return refs[0]
+
+    def git_current_ref(self, short=False):
+        ref = self._git_current_ref(symbolic=True, short=short)
+        if ref != 'HEAD':
+            return ref
+        return self._git_current_ref(symbolic=False, short=short)
 
 
 class Value(object):
