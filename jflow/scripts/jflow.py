@@ -7,6 +7,7 @@ from dsapy import app
 from dsapy import flag
 
 import jflow.cmd.current_ref
+import jflow.cmd.publish
 import jflow.cmd.rebase
 import jflow.cmd.resolve
 import jflow.cmd.start
