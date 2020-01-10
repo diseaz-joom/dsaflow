@@ -119,53 +119,6 @@ class Branch(object):
 
         return prefix + remote + branch + patch
 
-    @classmethod
-    def iter_heads(cls):
-        refs = (cls.FOR_EACH_REF_SEP.split(line) for line in run.get_output(['git', 'for-each-ref']))
-        for ref_hash, ref_type, ref_name in refs:
-            if ref_type != 'commit':
-                continue
-            b = cls.make(ref_name, ref_hash=ref_hash)
-            if not b:
-                continue
-            yield b
-
-    @classmethod
-    def iter_hier(cls):
-        bs = {b.full_ref(): b for b in cls.iter_heads()}
-        skip = set()
-        for b in bs.values():
-            pr, pt = b._get_parent_ref()
-            pb = bs.get(pr)
-            if not pb:
-                continue
-            skip.add(b._connect_parent(pb, pt))
-        for b in bs.values():
-            if b.full_ref() not in skip:
-                yield b
-
-    @staticmethod
-    def version_less(a, b):
-        if a is None:
-            return True
-        if not a:
-            return False
-        return a < b
-
-    @classmethod
-    def resolve(cls, name, heads=None):
-        if heads is None:
-            heads = cls.iter_hier()
-        prefix = name + '/'
-        resolved_key = None
-        resolved = None
-        for b in heads:
-            branch_key, prefixed = jflow.strip_prefix(prefix, b.branch)
-            if prefixed or b.branch == name:
-                if cls.version_less(resolved_key, branch_key):
-                    resolved_key, resolved = branch_key, b
-        return resolved
-
     def _get_parent_ref(self):
         if self.remote:
             return Branch(branch=self.branch, patch=self.patch, is_local=self.is_local, is_stgit=self.is_stgit, is_log=self.is_log).full_ref(), 'remote'
@@ -195,3 +148,53 @@ class Branch(object):
         elif pt == 'local':
             self.public = p
             return p.full_ref()
+
+
+class Controller(run.Cmd):
+    Branch = Branch
+
+    def branch_iter_heads(self):
+        refs = (self.Branch.FOR_EACH_REF_SEP.split(line) for line in self.cmd_output(['git', 'for-each-ref']))
+        for ref_hash, ref_type, ref_name in refs:
+            if ref_type != 'commit':
+                continue
+            b = self.Branch.make(ref_name, ref_hash=ref_hash)
+            if not b:
+                continue
+            yield b
+
+    def branch_iter_tree(self):
+        bs = {b.full_ref(): b for b in self.branch_iter_heads()}
+        skip = set()
+        for b in bs.values():
+            pr, pt = b._get_parent_ref()
+            pb = bs.get(pr)
+            if not pb:
+                continue
+            skip.add(b._connect_parent(pb, pt))
+        for b in bs.values():
+            if b.full_ref() not in skip:
+                yield b
+
+    @staticmethod
+    def branch_version_less(a, b):
+        if a is None:
+            return True
+        if not a:
+            return False
+        return a < b
+
+    def branch_resolve(self, name, heads=None):
+        if not name:
+            return None
+        if heads is None:
+            heads = self.branch_iter_tree()
+        prefix = name + '/'
+        resolved_key = None
+        resolved = None
+        for b in heads:
+            branch_key, prefixed = jflow.strip_prefix(prefix, b.branch)
+            if prefixed or b.branch == name:
+                if self.branch_version_less(resolved_key, branch_key):
+                    resolved_key, resolved = branch_key, b
+        return resolved

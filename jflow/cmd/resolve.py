@@ -3,23 +3,17 @@
 
 """Resolve a branch family name into a latest branch name."""
 
-import collections
-import json
 import logging
-import re
 
 from dsapy import app
-from dsapy import flag
 
-import jflow
-from jflow import run
 from jflow import branch
 
 
 _logger = logging.getLogger(__name__)
 
 
-class Resolve(app.Command):
+class Resolve(branch.Controller, app.Command):
     '''Resolve a branch family name into a latest branch name.'''
     name='resolve'
 
@@ -28,15 +22,23 @@ class Resolve(app.Command):
         super().add_arguments(parser)
 
         parser.add_argument(
+            '--ref',
+            action='store_true',
+            help='Print full ref name',
+        )
+        parser.add_argument(
             'name',
             metavar='NAME',
             help='Name to resolve',
         )
 
     def main(self):
-        resolved = branch.Branch.resolve(self.flags.name)
+        resolved = self.branch_resolve(self.flags.name)
         if resolved:
-            print(resolved.branch)
+            if self.flags.ref:
+                print(resolved.full_ref())
+            else:
+                print(resolved.branch)
 
 
 if __name__ == '__main__':

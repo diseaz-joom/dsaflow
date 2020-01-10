@@ -5,7 +5,10 @@
 
 import locale
 import logging
+import shlex
 import subprocess
+
+from dsapy import app
 
 import jflow
 
@@ -13,19 +16,32 @@ _logger = logging.getLogger(__name__)
 _encoding = locale.getpreferredencoding()
 
 
-def get_output(args):
-    _logger.debug('Run: %r', args)
-    p = subprocess.run(args, encoding=_encoding, stdout=subprocess.PIPE, check=True, universal_newlines=True)
-    return jflow.output_lines(p.stdout)
+class Cmd(object):
+    '''Command runner.'''
 
+    @classmethod
+    def add_arguments(cls, parser):
+        super().add_arguments(parser)
 
-def get_output_ret(args, check=True):
-    _logger.debug('Run: %r', args)
-    p = subprocess.run(args, encoding=_encoding, stdout=subprocess.PIPE, check=check, universal_newlines=True)
-    return jflow.output_lines(p.stdout), p.returncode
+        parser.add_argument(
+            '-n', '--dry-run',
+            action='store_true',
+            help=('Do not make any changes.'
+                  ' Commands to be executed will be logged.'),
+        )
 
+    def cmd_output(self, args):
+        return self.cmd_output_ret(args)[0]
 
-def action(args, check=True):
-    _logger.debug('Run: %r', args)
-    p = subprocess.run(args, encoding=_encoding, check=check, universal_newlines=True)
-    return p.returncode
+    def cmd_output_ret(self, args, check=True):
+        _logger.info('Run[yes]: %s', ' '.join(shlex.quote(s) for s in args))
+        p = subprocess.run(args, encoding=_encoding, stdout=subprocess.PIPE, check=check, universal_newlines=True)
+        return jflow.output_lines(p.stdout), p.returncode
+
+    def cmd_action(self, args, check=True):
+        run_str = 'dry' if self.flags.dry_run else 'yes'
+        _logger.info('Run[%s]: %s', run_str, ' '.join(shlex.quote(s) for s in args))
+        if self.flags.dry_run:
+            return 0
+        p = subprocess.run(args, encoding=_encoding, check=check, universal_newlines=True)
+        return p.returncode
