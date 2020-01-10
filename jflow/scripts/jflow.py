@@ -8,6 +8,7 @@ from dsapy import flag
 
 import jflow.cmd.start
 import jflow.cmd.rebase
+import jflow.cmd.resolve
 
 
 def run():
