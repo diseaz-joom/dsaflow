@@ -44,3 +44,6 @@ def branch_key_public(b):
 
 def branch_key_merge_to(b):
     return make_key(branch_key_base(b), KEY_MERGE_TO)
+
+def remote_key_url(r):
+    return make_key('remote', r, 'url')
