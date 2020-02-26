@@ -3,6 +3,7 @@
 
 import os
 import re
+import subprocess
 
 import jflow
 from jflow import run
@@ -34,10 +35,18 @@ class Git(run.Cmd):
         for value in values[1:]:
             self.git_config_add(key, value)
 
-    def git_config_get(self, key, default=None):
+    def git_config_get(self, key):
         for value in self.cmd_output(['git', 'config', '--get', str(key)]):
             # Only return first value
             return value
+
+    def git_config_get_default(self, key, default=None):
+        try:
+            return self.git_config_get(key)
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 1:
+                return default
+            raise
 
     def git_config_get_multi(self, key):
         return self.cmd_output(['git', 'config', '--get-all', str(key)])

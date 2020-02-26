@@ -52,6 +52,11 @@ class Start(sync.SyncMixin, branch.Controller, git.Git, run.Cmd, app.Command):
             help='Use this name for debug branch',
         )
         parser.add_argument(
+            '--remote',
+            metavar='BRANCH',
+            help='Use this name for remote branch',
+        )
+        parser.add_argument(
             '--sync',
             action='store_true',
             help='Sync before rebase',
@@ -95,9 +100,10 @@ class Start(sync.SyncMixin, branch.Controller, git.Git, run.Cmd, app.Command):
 
         version = tv.get(config.KEY_VERSION, 1)
 
+        public_prefix = tv.get(config.KEY_PUBLIC_PREFIX, prefix)
         public = self.flags.public or '{pp}{b}{ps}'.format(
             b=base,
-            pp=tv.get(config.KEY_PUBLIC_PREFIX, prefix),
+            pp=public_prefix,
             ps=tv.get(config.KEY_PUBLIC_SUFFIX, ''),
         )
 
@@ -105,6 +111,12 @@ class Start(sync.SyncMixin, branch.Controller, git.Git, run.Cmd, app.Command):
             b=base,
             pp=tv.get(config.KEY_DEBUG_PREFIX, config.DEFAULT_DEBUG_PREFIX),
             ps=tv.get(config.KEY_DEBUG_SUFFIX, config.DEFAULT_DEBUG_SUFFIX),
+        )
+
+        remote = self.flags.remote or '{pp}{b}{ps}'.format(
+            b=base,
+            pp=tv.get(config.KEY_REMOTE_PREFIX, public_prefix),
+            ps=tv.get(config.KEY_REMOTE_SUFFIX, ''),
         )
 
         heads = list(self.branch_iter_tree())
@@ -126,6 +138,7 @@ class Start(sync.SyncMixin, branch.Controller, git.Git, run.Cmd, app.Command):
         self.git_config_set(config.branch_key_version(name), version)
         self.git_config_set(config.branch_key_public(name), public)
         self.git_config_set(config.branch_key_debug(name), debug)
+        self.git_config_set(config.branch_key_remote(name), remote)
         self.git_config_set(config.branch_key_upstream(name), upstream_b.branch)
         self.git_config_set(config.branch_key_fork(name), fork_b.branch)
 

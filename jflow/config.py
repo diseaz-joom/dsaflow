@@ -13,6 +13,7 @@ KEY_FORK = 'fork'
 KEY_UPSTREAM = 'upstream'
 KEY_PUBLIC = 'public'
 KEY_DEBUG = 'debug'
+KEY_REMOTE = 'remote'
 KEY_MERGE_TO = 'merge-to'
 
 # Template-only keys
@@ -20,6 +21,8 @@ KEY_PUBLIC_PREFIX = 'public-prefix'
 KEY_PUBLIC_SUFFIX = 'public-suffix'
 KEY_DEBUG_PREFIX = 'debug-prefix'
 KEY_DEBUG_SUFFIX = 'debug-suffix'
+KEY_REMOTE_PREFIX = 'remote-prefix'
+KEY_REMOTE_SUFFIX = 'remote-suffix'
 
 DEFAULT_DEBUG_PREFIX = 'feature/'
 DEFAULT_DEBUG_SUFFIX = '.debug'
@@ -62,17 +65,25 @@ def branch_key_debug(b):
     return make_key(branch_key_base(b), KEY_DEBUG)
 
 
+def branch_key_remote(b):
+    return make_key(branch_key_base(b), KEY_REMOTE)
+
+
 def branch_key_merge_to(b):
     return make_key(branch_key_base(b), KEY_MERGE_TO)
+
 
 def branch_key_stgit_version(b):
     return make_key('branch', b, 'stgit', 'stackformatversion')
 
+
 def branch_key_description(b):
     return make_key('branch', b, 'description')
 
+
 def branch_stgit_name(b):
     return b + STGIT_SUFFIX
+
 
 def remote_key_url(r):
     return make_key('remote', r, 'url')

@@ -40,7 +40,7 @@ class ListCmd(branch.TreeBuilder, app.Command):
         elif b.patches is not None:
             r.typ = 's'
 
-        if b.public is not None:
+        if b.public is not None or b.self_public:
             r.public = 'p'
 
         if b.remote is not None:
