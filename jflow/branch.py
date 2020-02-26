@@ -277,16 +277,22 @@ class TreeBuilder(git.Git, run.Cmd):
 
         # Attach related branches to jflow
         for b in list(branches.values()):
-            remote_name = b.name
+            remote_key = config.branch_key_remote(b.name)
+            remote_name = cfg.get(remote_key)
             remote_b = remotes.pop(remote_name, None)
+            if remote_b is None:
+                remote_b = remotes.pop(b.name, None)
             if remote_b is not None:
                 b.remote = remote_b
 
             public_key = config.branch_key_public(b.name)
             public_name = cfg.get(public_key)
-            public_b = branches.pop(public_name, None)
-            if public_b is not None:
-                b.public = public_b
+            if public_name != b.name:
+                public_b = branches.pop(public_name, None)
+                if public_b is not None:
+                    b.public = public_b
+            else:
+                b.self_public = True
 
             debug_key = config.branch_key_debug(b.name)
             debug_name = cfg.get(debug_key)

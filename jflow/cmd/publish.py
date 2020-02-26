@@ -78,12 +78,12 @@ class Publish(PublishTools, git.Git, app.Command):
         if self.flags.local:
             return
 
-        # TODO(diseaz): take remote of the upstream branch upstream.
+        # TODO(diseaz): take origin of the upstream branch upstream.
         remote_name = 'origin'
-        remote_branch_name = current_branch
-
         if self.flags.debug:
             remote_branch_name = self.git_config_get(config.branch_key_debug(current_branch))
+        else:
+            remote_branch_name = self.git_config_get_default(config.branch_key_remote(current_branch), current_branch)
 
         self.cmd_action([
             'git', 'push', '--force', 'origin',
