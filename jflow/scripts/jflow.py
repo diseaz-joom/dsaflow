@@ -7,10 +7,13 @@ from dsapy import app
 from dsapy import flag
 
 import jflow.cmd.current_ref
+import jflow.cmd.jenkins
+import jflow.cmd.list
 import jflow.cmd.publish
 import jflow.cmd.rebase
 import jflow.cmd.resolve
 import jflow.cmd.start
+import jflow.cmd.sync
 
 
 def run():

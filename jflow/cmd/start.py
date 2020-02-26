@@ -4,6 +4,7 @@
 """Command to start a new branch."""
 
 import collections
+import logging
 
 from dsapy import app
 from dsapy import flag
@@ -12,13 +13,17 @@ from jflow import branch
 from jflow import config
 from jflow import git
 from jflow import run
+from jflow import sync
+
+
+_logger = logging.getLogger(__name__)
 
 
 class Error(Exception):
     '''Base class for errors in the module.'''
 
 
-class Start(branch.Controller, git.Git, run.Cmd, app.Command):
+class Start(sync.SyncMixin, branch.Controller, git.Git, run.Cmd, app.Command):
     '''Start a new branch.'''
     name='start'
 
@@ -27,22 +32,29 @@ class Start(branch.Controller, git.Git, run.Cmd, app.Command):
         super().add_arguments(parser)
 
         parser.add_argument(
-            '--branch.upstream',
-            dest='branch_upstream',
+            '--upstream',
             metavar='BRANCH',
             help='Use this branch as `upstream` parameter',
         )
         parser.add_argument(
-            '--branch.from',
-            dest='branch_from',
+            '--fork',
             metavar='BRANCH',
-            help='Use this branch as `from` parameter',
+            help='Use this branch as `fork` parameter',
         )
         parser.add_argument(
-            '--branch.public',
-            dest='branch_public',
+            '--public',
             metavar='BRANCH',
             help='Use this name for public branch',
+        )
+        parser.add_argument(
+            '--debug',
+            metavar='BRANCH',
+            help='Use this name for debug branch',
+        )
+        parser.add_argument(
+            '--sync',
+            action='store_true',
+            help='Sync before rebase',
         )
 
         parser.add_argument(
@@ -52,9 +64,16 @@ class Start(branch.Controller, git.Git, run.Cmd, app.Command):
         )
 
     def main(self):
+        self.git_check_workdir_is_clean()
+        if self.flags.sync:
+            self.sync()
+
         name = self.flags.name
-        matches = []
-        for v in self.git_config_get_regex('jflow.template.', '.version'):
+        matches = []  # A list of matched template names
+        for v in self.git_config_get_regex(
+                config.make_prefix(config.TEMPLATE_KEY_PREFIX),
+                config.make_suffix(config.KEY_VERSION),
+        ):
             key = v.key()
             if name.startswith(key):
                 matches.append(key)
@@ -68,35 +87,45 @@ class Start(branch.Controller, git.Git, run.Cmd, app.Command):
         tv = {
             v.key(): v.value
             for k in matches
-            for v in self.git_config_get_regex('jflow.template.' + k + '.', None)
+            for v in self.git_config_get_regex(
+                    config.make_prefix(config.TEMPLATE_KEY_PREFIX, k),
+                    None,
+            )
         }
 
         version = tv.get(config.KEY_VERSION, 1)
 
-        public = self.flags.branch_public or '{pp}{b}{ps}'.format(
+        public = self.flags.public or '{pp}{b}{ps}'.format(
             b=base,
             pp=tv.get(config.KEY_PUBLIC_PREFIX, prefix),
             ps=tv.get(config.KEY_PUBLIC_SUFFIX, ''),
         )
 
+        debug = self.flags.debug or '{pp}{b}{ps}'.format(
+            b=base,
+            pp=tv.get(config.KEY_DEBUG_PREFIX, config.DEFAULT_DEBUG_PREFIX),
+            ps=tv.get(config.KEY_DEBUG_SUFFIX, config.DEFAULT_DEBUG_SUFFIX),
+        )
+
         heads = list(self.branch_iter_tree())
-        upstream_b = self.branch_resolve(self.flags.branch_upstream or tv.get(config.KEY_UPSTREAM), heads=heads)
+        upstream_b = self.branch_resolve(self.flags.upstream or tv.get(config.KEY_UPSTREAM), heads=heads)
         if not upstream_b:
             raise Error('No upstream branch found')
 
-        from_b = upstream_b
-        from_ref = self.flags.branch_from or tv.get(config.KEY_FROM)
-        if from_ref:
-            from_b = self.branch_resolve(from_ref, heads=heads)
-            if not from_b:
-                raise Error('Branch {!r} not found'.format(from_ref))
+        fork_b = upstream_b
+        fork_ref = self.flags.fork or tv.get(config.KEY_FORK)
+        if fork_ref:
+            fork_b = self.branch_resolve(fork_ref, heads=heads)
+            if not fork_b:
+                raise Error('Branch {!r} not found'.format(fork_ref))
 
         self.git_config_set(config.branch_key_version(name), version)
         self.git_config_set(config.branch_key_public(name), public)
+        self.git_config_set(config.branch_key_debug(name), debug)
         self.git_config_set(config.branch_key_upstream(name), upstream_b.branch)
-        self.git_config_set(config.branch_key_from(name), from_b.branch)
+        self.git_config_set(config.branch_key_fork(name), fork_b.branch)
 
-        self.cmd_action(['stg', 'branch', '--create', name, from_b.full_ref()])
+        self.cmd_action(['stg', 'branch', '--create', name, fork_b.full_ref()])
         self.cmd_action(['stg', 'new', '--message=main', 'main'])
         self.cmd_action(['git', 'branch', '--set-upstream-to={}'.format(upstream_b.full_ref())])
 

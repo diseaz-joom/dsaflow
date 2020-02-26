@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
+import os
 import re
 
 import jflow
@@ -12,6 +13,14 @@ class Error(Exception):
 
 
 class Git(run.Cmd):
+    def git_config_list_names(self):
+        return self.cmd_output(['git', 'config', '--name-only', '--list'])
+
+    def git_config_values(self):
+        for line in self.cmd_output(['git', 'config', '--list']):
+            name, value = line.split('=', 1)
+            yield name, value
+
     def git_config_set(self, key, value):
         self.cmd_action(['git', 'config', '--local', '--replace-all', str(key), str(value)])
 
@@ -25,7 +34,7 @@ class Git(run.Cmd):
         for value in values[1:]:
             self.git_config_add(key, value)
 
-    def git_config_get(self, key):
+    def git_config_get(self, key, default=None):
         for value in self.cmd_output(['git', 'config', '--get', str(key)]):
             # Only return first value
             return value
@@ -66,6 +75,17 @@ class Git(run.Cmd):
         if ref != 'HEAD':
             return ref
         return self._git_current_ref(symbolic=False, short=short)
+
+    def git_workdir_is_clean(self):
+        return not self.cmd_output(['git', 'status', '--porcelain', '--untracked-files=no'])
+
+    def git_check_workdir_is_clean(self):
+        if not self.git_workdir_is_clean():
+            raise Error('Workdir is not clean')
+
+    def git_branch_exists(self, b):
+        _, ret = self.cmd_output_ret(['git', 'rev-parse', '--verify', b], check=False)
+        return ret == os.EX_OK
 
 
 class Value(object):
