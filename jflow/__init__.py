@@ -26,6 +26,18 @@ def strip_prefix(prefix, s):
     return Strip(s=s, ok=False)
 
 
+def ensure_suffix(suffix, s):
+    if s.endswith(suffix):
+        return Strip(s=s, ok=True)
+    return Strip(s=s + suffix, ok=False)
+
+
+def ensure_prefix(prefix, s):
+    if s.startswith(prefix):
+        return Strip(s=s, ok=True)
+    return Strip(s=prefix + s, ok=False)
+
+
 def iter_output_lines(output):
     if hasattr(output, 'split'):
         return iter(output.splitlines())
@@ -33,7 +45,7 @@ def iter_output_lines(output):
 
 
 def output_lines(output):
-    if hasattr(output, 'split'):
+    if hasattr(output, 'splitlines'):
         return output.splitlines()
     return [strip_suffix('\n', line).s for line in output]
 
@@ -54,3 +66,17 @@ def as_dict(obj):
     except AttributeError:
         f = get_dict
     return f()
+
+
+def lazy_value(factory):
+    def gen():
+        v = factory()
+        while True:
+            yield v
+    return gen().__next__
+
+
+def lazy_default(v, factory):
+    if v is None:
+        return lazy_value(factory)
+    return lambda: v
