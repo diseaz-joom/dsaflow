@@ -119,15 +119,15 @@ class Start(sync.SyncMixin, branch.Controller, git.Git, run.Cmd, app.Command):
             if not fork_b:
                 raise Error('Branch {!r} not found'.format(fork_ref))
 
+        self.cmd_action(['stg', 'branch', '--create', name, fork_b.full_ref()])
+        self.cmd_action(['stg', 'new', '--message=main', 'main'])
+        self.cmd_action(['git', 'branch', '--set-upstream-to={}'.format(upstream_b.full_ref())])
+
         self.git_config_set(config.branch_key_version(name), version)
         self.git_config_set(config.branch_key_public(name), public)
         self.git_config_set(config.branch_key_debug(name), debug)
         self.git_config_set(config.branch_key_upstream(name), upstream_b.branch)
         self.git_config_set(config.branch_key_fork(name), fork_b.branch)
-
-        self.cmd_action(['stg', 'branch', '--create', name, fork_b.full_ref()])
-        self.cmd_action(['stg', 'new', '--message=main', 'main'])
-        self.cmd_action(['git', 'branch', '--set-upstream-to={}'.format(upstream_b.full_ref())])
 
 
 if __name__ == '__main__':

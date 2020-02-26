@@ -8,6 +8,7 @@ import urllib.parse as up
 from dsapy import app
 from dsapy import flag
 
+from jflow import config
 from jflow import git
 from jflow import run
 
@@ -29,7 +30,7 @@ class Jenkins(git.Git, run.Cmd, app.Command):
     def main(self):
         ref = self.git_current_ref(short=True)
         if self.flags.debug:
-            ref = ref + '.debug'
+            ref = self.git_config_get(config.branch_key_debug(ref))
         ref_escaped = up.quote(up.quote(ref, safe=''), safe='')
         url = 'https://jenkins.joom.it/job/backend-api/job/{}'.format(ref_escaped)
         self.cmd_action(['xdg-open', url])

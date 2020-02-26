@@ -83,7 +83,7 @@ class Publish(PublishTools, git.Git, app.Command):
         remote_branch_name = current_branch
 
         if self.flags.debug:
-            remote_branch_name = current_branch + '.debug'
+            remote_branch_name = self.git_config_get(config.branch_key_debug(current_branch))
 
         self.cmd_action([
             'git', 'push', '--force', 'origin',

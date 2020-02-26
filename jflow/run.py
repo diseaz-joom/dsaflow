@@ -19,6 +19,8 @@ _encoding = locale.getpreferredencoding()
 class Cmd(object):
     '''Command runner.'''
 
+    DRY_RUN = False
+
     @classmethod
     def add_arguments(cls, parser):
         super().add_arguments(parser)
@@ -26,8 +28,16 @@ class Cmd(object):
         parser.add_argument(
             '-n', '--dry-run',
             action='store_true',
+            default=cls.DRY_RUN,
             help=('Do not make any changes.'
                   ' Commands to be executed will be logged.'),
+        )
+        parser.add_argument(
+            '-f', '--force',
+            action='store_false',
+            dest='dry_run',
+            default=cls.DRY_RUN,
+            help='Force changes.'
         )
 
     def cmd_output(self, args):
