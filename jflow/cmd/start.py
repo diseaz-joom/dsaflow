@@ -132,7 +132,7 @@ class Start(sync.SyncMixin, branch.Controller, git.Git, run.Cmd, app.Command):
                 raise Error('Branch {!r} not found'.format(fork_ref))
 
         self.cmd_action(['stg', 'branch', '--create', name, fork_b.full_ref()])
-        self.cmd_action(['stg', 'new', '--message=main', 'main'])
+        self.cmd_action(['stg', 'new', '--message=WIP', 'wip'])
         self.cmd_action(['git', 'branch', '--set-upstream-to={}'.format(upstream_b.full_ref())])
 
         self.git_config_set(config.branch_key_version(name), version)
