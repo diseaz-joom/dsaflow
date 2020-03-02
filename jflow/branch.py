@@ -349,18 +349,13 @@ class TreeBuilder(git.Git, run.Cmd):
         ubs = list(self.branches_to_merge(branches.values()))
         mbs = {b.ref: common.Struct(b=b, ub=ub) for b, ub in ubs}
         upstreams = {ub.ref: ub for b, ub in ubs}
-        _logger.debug('Upstreams: %r', upstreams.keys())
         for uref, ub in upstreams.items():
-            _logger.debug('Upstream: %r', ub)
             mrefs = self.merged_refs(uref)
             for ref in mrefs:
                 b = mbs.get(ref)
                 if b is None:
-                    _logger.debug('No branch: %r', ref)
                     continue
-                _logger.debug('Branch: %r -> %r', ref, b.b)
                 if b.ub.ref != ub.ref:
-                    _logger.debug('Upstream mismatch: %r != %r', b.ub.ref, ub.ref)
                     continue
                 b.b.merged = True
 
