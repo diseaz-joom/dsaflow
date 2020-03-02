@@ -11,6 +11,7 @@ from dsapy import app
 
 import jflow
 from jflow import branch
+from jflow import color
 from jflow import common
 from jflow import config
 from jflow import git
@@ -33,8 +34,14 @@ class ListCmd(branch.TreeBuilder, app.Command):
     def add_arguments(cls, parser):
         super().add_arguments(parser)
 
+        parser.add_argument(
+            '--patch',
+            action='store_true',
+            help='Print patches',
+        )
+
     def branch_marks(self, b):
-        r = common.Struct(typ=' ', public=' ', remote=' ', debug=' ', description='')
+        r = common.Struct(typ=' ', public=' ', remote=' ', debug=' ', description='', merged=' ')
         if b.jflow:
             r.typ = 'j'
         elif b.patches is not None:
@@ -49,6 +56,32 @@ class ListCmd(branch.TreeBuilder, app.Command):
         if b.debug is not None:
             r.debug = 'd'
 
+        if b.merged:
+            r.merged = 'M'
+
+        r.name = '{c.W}{b.name}{c.N}'.format(c=color.Colors, b=b)
+
+        def patches(status):
+            return [p for p in b.patches if p.status == status]
+
+        def pn(p):
+            if p.merged:
+                return color.Colors.ul + p.patch
+            return p.patch
+
+        def j(ps, prefix=None, suffix=None):
+            if ps:
+                return (prefix or '') + ' '.join(pn(p) for p in ps) + (suffix or '')
+            return ''
+
+        if b.patches is None or not self.flags.patch:
+            r.patches = ''
+        else:
+            ss = [('applied', color.Colors.g), ('unapplied', color.Colors.y), ('hidden', color.Colors.K)]
+            ps = [j(patches(s), p, color.Colors.N) for s, p in ss]
+            ps = [p for p in ps if p]
+            r.patches = '[' + ' '.join(ps) + ']'
+
         if b.description is not None:
             r.description = ' | ' + b.description
 
@@ -58,7 +91,8 @@ class ListCmd(branch.TreeBuilder, app.Command):
         branches = self.branch_tree()
 
         for b in branches.values():
-            print('{m.typ}{m.public}{m.remote}{m.debug} {b.name}{m.description}'.format(
+            print('{m.typ}{m.public}{m.remote}{m.debug} {m.name} {m.patches}{m.description}'.format(
                 b=b,
                 m=self.branch_marks(b),
+                c=color.Colors,
             ))

@@ -206,14 +206,29 @@ class Controller(run.Cmd):
 class TreeBuilder(git.Git, run.Cmd):
     '''Builds branches tree.'''
 
+    HEAD_PAT = 'refs/heads/**'
+    REMOTE_PAT = 'refs/remotes/**'
+    TAG_PAT = 'refs/tags/**'
+    PATCH_PAT = 'refs/patches/**'
+    PATCHLOG_PAT = 'refs/patches/**/*.log'
+
+    LIST_PATTERNS = [HEAD_PAT, REMOTE_PAT, PATCH_PAT]
+
     HEAD_RE = re.compile('refs/heads/(?P<name>.*)')
     REMOTE_RE = re.compile('refs/remotes/(?P<remote>[^/]+)/(?P<name>.*)')
     TAG_RE = re.compile('refs/tags/(?P<name>.*)')
     PATCH_RE = re.compile('refs/patches/(?P<name>.*)/(?P<patch>[^/]+)')
     PATCHLOG_RE = re.compile('refs/patches/(?P<name>.*)/(?P<patch>[^/]+)(?P<log>\.log)')
 
+    MARK_STATUS = {
+        '+': 'applied',
+        '>': 'applied',
+        '-': 'unapplied',
+        '!': 'hidden',
+    }
+
     def parse_ref(self, ref):
-        for fmt, r in (('branch', self.HEAD_RE), ('remote', self.REMOTE_RE), ('tag', self.TAG_RE), ('patch', self.PATCH_RE), ('patchlog', self.PATCHLOG_RE)):
+        for fmt, r in (('branch', self.HEAD_RE), ('remote', self.REMOTE_RE), ('patchlog', self.PATCHLOG_RE), ('patch', self.PATCH_RE)):
             m = r.match(ref)
             if not m:
                 continue
@@ -223,18 +238,14 @@ class TreeBuilder(git.Git, run.Cmd):
         return {}
 
     def for_each_ref(self):
-        for_each_ref_out = self.cmd_output(['git', 'for-each-ref', '--format=%(refname)'])
+        for_each_ref_out = self.cmd_output(['git', 'for-each-ref', '--format=%(refname)'] + self.LIST_PATTERNS)
         for ref in for_each_ref_out:
-            r = common.Struct(ref=ref)
+            r = common.Struct(ref=ref, merged=False)
             r.update(self.parse_ref(ref))
             yield r
 
-    MARK_STATUS = {
-        '+': 'applied',
-        '>': 'applied',
-        '-': 'unapplied',
-        '!': 'hidden',
-    }
+    def merged_refs(self, merged_to):
+        return self.cmd_output(['git', 'for-each-ref', '--format=%(refname)', '--merged={}'.format(merged_to)])
 
     def stgit_patches(self, b, refs):
         patch_lines = self.cmd_output(['stg', 'series', '--all', '--branch={}'.format(b.name)])
@@ -249,12 +260,32 @@ class TreeBuilder(git.Git, run.Cmd):
             })
             yield patch_b
 
+    def branches_to_merge(self, bs):
+        for b in bs:
+            if not b.upstream:
+                continue
+            yield b, b.upstream
+            if not b.patches:
+                continue
+            for p in b.patches:
+                yield p, b.upstream
+
     def branch_tree(self):
         refs = {r.ref:r for r in self.for_each_ref()}
         branches = {r.name:r for r in refs.values() if r.fmt == 'branch'}
         remotes = {r.name:r for r in refs.values() if r.fmt == 'remote'}
 
         cfg = dict(self.git_config_values())
+
+        # Attach branch config
+        for b in branches.values():
+            jflow_cfg = {}
+            for k, v in cfg.items():
+                sk, ok = jflow.strip_prefix(config.branch_key_base(b.name) + '.', k)
+                if not ok:
+                    continue
+                jflow_cfg[sk] = v
+            b.jflow = jflow_cfg
 
         # Attach .stgit branches to their parents
         for b in list(branches.values()):
@@ -300,6 +331,12 @@ class TreeBuilder(git.Git, run.Cmd):
             if debug_b is not None:
                 b.debug = debug_b
 
+            upstream_key = config.branch_key_upstream(b.name)
+            upstream_name = cfg.get(upstream_key)
+            upstream_b = branches.get(upstream_name, None) or remotes.get(upstream_name, None)
+            if upstream_b is not None:
+                b.upstream = upstream_b
+
         # Attach branch descriptions
         for b in branches.values():
             key = config.branch_key_description(b.name)
@@ -307,5 +344,24 @@ class TreeBuilder(git.Git, run.Cmd):
             if description is None:
                 continue
             b.description = description
+
+        # Detect merges
+        ubs = list(self.branches_to_merge(branches.values()))
+        mbs = {b.ref: common.Struct(b=b, ub=ub) for b, ub in ubs}
+        upstreams = {ub.ref: ub for b, ub in ubs}
+        _logger.debug('Upstreams: %r', upstreams.keys())
+        for uref, ub in upstreams.items():
+            _logger.debug('Upstream: %r', ub)
+            mrefs = self.merged_refs(uref)
+            for ref in mrefs:
+                b = mbs.get(ref)
+                if b is None:
+                    _logger.debug('No branch: %r', ref)
+                    continue
+                _logger.debug('Branch: %r -> %r', ref, b.b)
+                if b.ub.ref != ub.ref:
+                    _logger.debug('Upstream mismatch: %r != %r', b.ub.ref, ub.ref)
+                    continue
+                b.b.merged = True
 
         return branches

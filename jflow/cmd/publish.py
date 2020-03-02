@@ -68,10 +68,11 @@ class Publish(PublishTools, git.Git, app.Command):
 
     def main(self):
         current_branch = self.git_current_ref(short=True)
-        public_branch_name = self.public_branch(current_branch)
 
         if self.flags.debug:
             public_branch_name = current_branch
+        else:
+            public_branch_name = self.public_branch(current_branch)
 
         self.publish_local(current_branch, public_branch_name, force_new=self.flags.new)
 
@@ -86,7 +87,7 @@ class Publish(PublishTools, git.Git, app.Command):
             remote_branch_name = self.git_config_get_default(config.branch_key_remote(current_branch), current_branch)
 
         self.cmd_action([
-            'git', 'push', '--force', 'origin',
+            'git', 'push', '--force', remote_name,
             '{public}:{remote}'.format(
                 public=public_branch_name,
                 remote=remote_branch_name,

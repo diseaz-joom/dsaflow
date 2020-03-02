@@ -6,6 +6,7 @@
 from dsapy import app
 from dsapy import flag
 
+import jflow.cmd.branches
 import jflow.cmd.current_ref
 import jflow.cmd.delete
 import jflow.cmd.jenkins
