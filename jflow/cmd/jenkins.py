@@ -31,6 +31,8 @@ class Jenkins(git.Git, run.Cmd, app.Command):
         ref = self.git_current_ref(short=True)
         if self.flags.debug:
             ref = self.git_config_get(config.branch_key_debug(ref))
+        else:
+            ref = self.git_config_get(config.branch_key_remote(ref))
         ref_escaped = up.quote(up.quote(ref, safe=''), safe='')
         url = 'https://jenkins.joom.it/job/backend-api/job/{}'.format(ref_escaped)
         self.cmd_action(['xdg-open', url])
