@@ -35,13 +35,18 @@ class ListCmd(branch.TreeBuilder, app.Command):
         super().add_arguments(parser)
 
         parser.add_argument(
-            '--patch',
+            '-d', '--description',
+            action='store_true',
+            help='Print branch descriptions',
+        )
+        parser.add_argument(
+            '-p', '--patch',
             action='store_true',
             help='Print patches',
         )
 
     def branch_marks(self, b):
-        r = common.Struct(typ=' ', public=' ', remote=' ', debug=' ', description='', merged=' ')
+        r = common.Struct(typ=' ', public=' ', remote=' ', debug=' ', description='', merged=' ', patches='')
         if b.jflow:
             r.typ = 'j'
         elif b.patches is not None:
@@ -59,7 +64,7 @@ class ListCmd(branch.TreeBuilder, app.Command):
         if b.merged:
             r.merged = 'M'
 
-        r.name = '{c.W}{b.name}{c.N}'.format(c=color.Colors, b=b)
+        r.name = ' {c.W}{b.name}{c.N}'.format(c=color.Colors, b=b)
 
         def patches(status):
             return [p for p in b.patches if p.status == status]
@@ -74,15 +79,13 @@ class ListCmd(branch.TreeBuilder, app.Command):
                 return (prefix or '') + ' '.join(pn(p) for p in ps) + (suffix or '')
             return ''
 
-        if b.patches is None or not self.flags.patch:
-            r.patches = ''
-        else:
+        if b.patches is not None and self.flags.patch:
             ss = [('applied', color.Colors.g), ('unapplied', color.Colors.y), ('hidden', color.Colors.K)]
             ps = [j(patches(s), p, color.Colors.N) for s, p in ss]
             ps = [p for p in ps if p]
-            r.patches = '[' + ' '.join(ps) + ']'
+            r.patches = ' (' + ' '.join(ps) + ')'
 
-        if b.description is not None:
+        if b.description is not None and self.flags.description:
             r.description = ' | ' + b.description
 
         return r
@@ -91,7 +94,7 @@ class ListCmd(branch.TreeBuilder, app.Command):
         branches = self.branch_tree()
 
         for b in branches.values():
-            print('{m.typ}{m.public}{m.remote}{m.debug} {m.name} {m.patches}{m.description}'.format(
+            print('{m.typ}{m.public}{m.remote}{m.debug}{m.merged}{m.name}{m.patches}{m.description}'.format(
                 b=b,
                 m=self.branch_marks(b),
                 c=color.Colors,
