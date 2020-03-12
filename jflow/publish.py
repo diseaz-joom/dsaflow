@@ -73,7 +73,7 @@ class ParamsMixin(ToolsMixin):
             p.remote_branch_name = self.git_config_get_default(config.branch_key_remote(p.current_branch), p.current_branch)
 
         if (not pr or p.debug) and not need_url:
-            return
+            return p
 
         p.upstream_branch_name = self.git_config_get(config.branch_key_upstream(p.current_branch))
         p.remote_url = self.git_config_get(config.remote_key_url(p.remote_name))
