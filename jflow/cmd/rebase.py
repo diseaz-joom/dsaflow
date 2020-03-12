@@ -8,11 +8,11 @@ from dsapy import flag
 
 from jflow import branch
 from jflow import config
+from jflow import publish
 from jflow import sync
-from jflow.cmd import publish
 
 
-class Rebase(sync.SyncMixin, publish.PublishTools, branch.Controller, app.Command):
+class Rebase(sync.SyncMixin, publish.ToolsMixin, branch.Controller, app.Command):
     '''Rebase a branch.'''
     name='rebase'
 

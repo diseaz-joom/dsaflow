@@ -107,10 +107,12 @@ class Start(sync.SyncMixin, branch.Controller, git.Git, run.Cmd, app.Command):
             ps=tv.get(config.KEY_PUBLIC_SUFFIX, ''),
         )
 
+        debug_prefix = tv.get(config.KEY_DEBUG_PREFIX, config.DEFAULT_DEBUG_PREFIX)
+        debug_suffix = tv.get(config.KEY_DEBUG_SUFFIX, config.DEFAULT_DEBUG_SUFFIX)
         debug = self.flags.debug or '{pp}{b}{ps}'.format(
             b=base,
-            pp=tv.get(config.KEY_DEBUG_PREFIX, config.DEFAULT_DEBUG_PREFIX),
-            ps=tv.get(config.KEY_DEBUG_SUFFIX, config.DEFAULT_DEBUG_SUFFIX),
+            pp=debug_prefix,
+            ps=debug_suffix,
         )
 
         remote = self.flags.remote or '{pp}{b}{ps}'.format(
@@ -138,6 +140,8 @@ class Start(sync.SyncMixin, branch.Controller, git.Git, run.Cmd, app.Command):
         self.git_config_set(config.branch_key_version(name), version)
         self.git_config_set(config.branch_key_public(name), public)
         self.git_config_set(config.branch_key_debug(name), debug)
+        self.git_config_set(config.branch_key_debug_prefix(name), debug_prefix)
+        self.git_config_set(config.branch_key_debug_suffix(name), debug_suffix)
         self.git_config_set(config.branch_key_remote(name), remote)
         self.git_config_set(config.branch_key_upstream(name), upstream_b.branch)
         self.git_config_set(config.branch_key_fork(name), fork_b.branch)

@@ -9,6 +9,7 @@ from dsapy import flag
 import jflow.cmd.branches
 import jflow.cmd.current_ref
 import jflow.cmd.delete
+import jflow.cmd.gh
 import jflow.cmd.jenkins
 import jflow.cmd.list
 import jflow.cmd.publish

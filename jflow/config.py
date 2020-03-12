@@ -15,6 +15,7 @@ KEY_PUBLIC = 'public'
 KEY_DEBUG = 'debug'
 KEY_REMOTE = 'remote'
 KEY_MERGE_TO = 'merge-to'
+KEY_EXTRA = 'extra'
 
 # Template-only keys
 KEY_PUBLIC_PREFIX = 'public-prefix'
@@ -65,8 +66,20 @@ def branch_key_debug(b):
     return make_key(branch_key_base(b), KEY_DEBUG)
 
 
+def branch_key_debug_prefix(b):
+    return make_key(branch_key_base(b), KEY_DEBUG_PREFIX)
+
+
+def branch_key_debug_suffix(b):
+    return make_key(branch_key_base(b), KEY_DEBUG_SUFFIX)
+
+
 def branch_key_remote(b):
     return make_key(branch_key_base(b), KEY_REMOTE)
+
+
+def branch_key_extra(b):
+    return make_key(branch_key_base(b), KEY_EXTRA)
 
 
 def branch_key_merge_to(b):
