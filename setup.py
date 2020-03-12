@@ -26,7 +26,6 @@ setuptools.setup(
     ],
     entry_points={
         "console_scripts": [
-            "dsaflow=dsaflow.scripts.dsaflow:run",
             "jflow=jflow.scripts.jflow:run",
         ],
     },
