@@ -9,10 +9,10 @@ import re
 from dsapy import app
 
 import jflow
+from jflow import common
 from jflow import config
 from jflow import git
 from jflow import run
-from jflow import struct
 
 
 _logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class ParamsMixin(ToolsMixin):
         )
 
     def params(self, current_branch=None, local=False, pr=False, expand=True, need_url=False):
-        p = struct.Struct(
+        p = common.Struct(
             debug=self.flags.debug,
         )
 

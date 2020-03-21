@@ -3,6 +3,9 @@
 
 """Command to rebase a branch."""
 
+import logging
+import pprint
+
 from dsapy import app
 from dsapy import flag
 
@@ -10,6 +13,9 @@ from jflow import branch
 from jflow import config
 from jflow import publish
 from jflow import sync
+
+
+_logger = logging.getLogger(__name__)
 
 
 class Rebase(sync.SyncMixin, publish.ToolsMixin, branch.Controller, app.Command):
@@ -57,25 +63,28 @@ class Rebase(sync.SyncMixin, publish.ToolsMixin, branch.Controller, app.Command)
 
         heads = list(self.branch_iter_tree())
 
-        branch_upstream = branch_conf.get(config.KEY_UPSTREAM)
-        branch_fork = branch_conf.get(config.KEY_FORK)
+        upstream_name = branch_conf.get(config.KEY_UPSTREAM)
+        fork_name = branch_conf.get(config.KEY_FORK)
 
-        new_upstream = branch_upstream
-        new_fork = branch_fork
+        upstream_b = self.branch_resolve(upstream_name, heads=heads)
+        fork_b = self.branch_resolve(fork_name, heads=heads)
+
+        new_upstream_b = upstream_b
+        new_fork_b = fork_b
         if self.flags.upstream is not None:
-            new_upstream = self.branch_resolve(self.flags.upstream, heads=heads).branch
-            if self.flags.fork is None and branch_upstream == branch_fork:
-                new_fork = new_upstream
+            new_upstream_b = self.branch_resolve(self.flags.upstream, heads=heads)
+            if self.flags.fork is None and upstream_b == fork_b:
+                new_fork_b = new_upstream_b
         if self.flags.fork is not None:
-            new_fork = self.branch_resolve(self.flags.fork, heads=heads).branch
+            new_fork_b = self.branch_resolve(self.flags.fork, heads=heads)
 
-        self.cmd_action(['stg', 'rebase', '--merged', new_fork])
+        self.cmd_action(['stg', 'rebase', '--merged', new_fork_b.full_ref()])
         self.cmd_action(['git', 'clean', '-d', '--force'])
 
-        if new_fork != branch_fork:
-            self.git_config_set(config.branch_key_fork(branch), new_fork)
-        if new_upstream != branch_upstream:
-            self.git_config_set(config.branch_key_upstream(branch), new_upstream)
+        if new_fork_b != fork_b:
+            self.git_config_set(config.branch_key_fork(branch), new_fork_b.branch)
+        if new_upstream_b != upstream_b:
+            self.git_config_set(config.branch_key_upstream(branch), new_upstream_b.branch)
 
         if need_publish:
             self.publish_local(branch, public_branch)

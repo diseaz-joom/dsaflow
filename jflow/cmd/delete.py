@@ -15,7 +15,6 @@ from jflow import common
 from jflow import config
 from jflow import git
 from jflow import run
-from jflow import struct
 
 
 _logger = logging.getLogger(__name__)
