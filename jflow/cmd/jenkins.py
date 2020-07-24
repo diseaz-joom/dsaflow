@@ -34,7 +34,7 @@ class Jenkins(git.Git, run.Cmd, app.Command):
         else:
             ref = self.git_config_get_default(config.branch_key_remote(ref), ref)
         ref_escaped = up.quote(up.quote(ref, safe=''), safe='')
-        url = 'https://jenkins.joom.it/job/backend-api/job/{}'.format(ref_escaped)
+        url = 'https://jenkins.joom.it/view/api-tests/job/backend-api/job/{}'.format(ref_escaped)
         self.cmd_action(['xdg-open', url])
 
 

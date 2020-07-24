@@ -13,6 +13,9 @@ class Error(Exception):
     '''Base class for errors in the module.'''
 
 
+# Full history:
+# git rev-list --pretty='format:parents %P%nrefs %D%n%-B' --all
+
 class Git(run.Cmd):
     def git_config_list_names(self):
         return self.cmd_output(['git', 'config', '--name-only', '--list'])
