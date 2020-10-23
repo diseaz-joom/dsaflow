@@ -17,6 +17,9 @@ class Jenkins(git.Git, run.Cmd, app.Command):
     '''Open jenkins build page.'''
     name='jenkins'
 
+    # BRANCH_BASE_URL = 'https://jenkins.joom.it/view/api-tests/job/backend-api/job/'
+    BRANCH_BASE_URL = 'https://api-jenkins.joomdev.net/job/api/job/api-tests/job/'
+
     @classmethod
     def add_arguments(cls, parser):
         super().add_arguments(parser)
@@ -34,7 +37,7 @@ class Jenkins(git.Git, run.Cmd, app.Command):
         else:
             ref = self.git_config_get_default(config.branch_key_remote(ref), ref)
         ref_escaped = up.quote(up.quote(ref, safe=''), safe='')
-        url = 'https://jenkins.joom.it/view/api-tests/job/backend-api/job/{}'.format(ref_escaped)
+        url = '{}{}'.format(self.BRANCH_BASE_URL, ref_escaped)
         self.cmd_action(['xdg-open', url])
 
 
