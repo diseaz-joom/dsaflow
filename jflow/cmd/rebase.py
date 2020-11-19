@@ -80,6 +80,10 @@ class Rebase(sync.SyncMixin, publish.ToolsMixin, branch.Controller, app.Command)
 
         self.cmd_action(['stg', 'rebase', '--merged', new_fork_b.full_ref()])
         self.cmd_action(['git', 'clean', '-d', '--force'])
+        self.cmd_action_pipe([
+            ['git', 'ls-files', '--others', '--directory', '--exclude-standard'],
+            ['xargs', 'rm', '--recursive', '--force', '--verbose'],
+        ])
 
         if new_fork_b != fork_b:
             self.git_config_set(config.branch_key_fork(branch), new_fork_b.branch)
