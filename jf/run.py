@@ -5,16 +5,83 @@
 
 import locale
 import logging
+import selectors
 import shlex
 import subprocess
 
-from dsapy import app
+from jf import common
+from jf import struct
 
-import jflow
 
 _logger = logging.getLogger(__name__)
 _encoding = locale.getpreferredencoding()
 
+
+class _RunnerFlags(object):
+    RUNNER_DRY_RUN = False
+
+    def runner_options(self):
+        return RunnerOptions(dry_run=self.flags.dry_run)
+
+
+class RunnerFlagsDryRun(_RunnerFlags):
+    '''Runner options from flags.'''
+
+    @classmethod
+    def add_arguments(cls, parser):
+        super().add_arguments(parser)
+
+        parser.add_argument(
+            '-n', '--dry-run',
+            action='store_true',
+            default=cls.RUNNER_DRY_RUN,
+            help=('Do not make any changes.'
+                  ' Commands to be executed will be logged.'),
+        )
+
+
+class RunnerFlagsForce(_RunnerFlags):
+    '''Runner options from flags.'''
+
+    @classmethod
+    def add_arguments(cls, parser):
+        super().add_arguments(parser)
+
+        parser.add_argument(
+            '-f', '--force',
+            action='store_false',
+            dest='dry_run',
+            default=cls.RUNNER_DRY_RUN,
+            help='Force changes.',
+        )
+
+
+class RunnerOptions(object):
+    def __init__(self, dry_run=False):
+        self.dry_run = dry_run
+
+
+class Runner(object):
+    def __init__(self, options):
+        self.options = options
+
+    def cmd_output(self, args):
+        return self.cmd_output_ret(args)[0]
+
+    def run_command(self, cmd, input=None, timeout=10):
+        if input is not None:
+            p = subprocess.Popen(
+                cmd,
+                encoding=_encoding, stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True,
+            )
+            output, _ = p.communicate(input=input, timeout=timeout)
+            return common.output_lines(output)
+
+        p = subprocess.run(args, encoding=_encoding, stdin=stdin, stdout=subprocess.PIPE, universal_newlines=True)
+
+        _logger.info('Run[yes]: %s', ' '.join(shlex.quote(s) for s in args))
+        p = subprocess.run(args, encoding=_encoding, stdout=subprocess.PIPE, check=check, universal_newlines=True)
+        return jflow.output_lines(p.stdout), p.returncode
 
 class Cmd(object):
     '''Command runner.'''
@@ -32,20 +99,11 @@ class Cmd(object):
             help=('Do not make any changes.'
                   ' Commands to be executed will be logged.'),
         )
-        parser.add_argument(
-            '-f', '--force',
-            action='store_false',
-            dest='dry_run',
-            default=cls.DRY_RUN,
-            help='Force changes.'
-        )
 
-    @classmethod
-    def cmd_output(cls, args):
-        return cls.cmd_output_ret(args)[0]
+    def cmd_output(self, args):
+        return self.cmd_output_ret(args)[0]
 
-    @classmethod
-    def cmd_output_ret(cls, args, check=True):
+    def cmd_output_ret(self, args, check=True):
         _logger.info('Run[yes]: %s', ' '.join(shlex.quote(s) for s in args))
         p = subprocess.run(args, encoding=_encoding, stdout=subprocess.PIPE, check=check, universal_newlines=True)
         return jflow.output_lines(p.stdout), p.returncode
@@ -110,3 +168,8 @@ class IterWithMarks(object):
         self._i += 1
         self._next, self._eoi = self._get_next()
         return v, IterMarks(index=i, last=self._eoi)
+
+def output_lines(output):
+    if hasattr(output, 'splitlines'):
+        return output.splitlines()
+    return [strip_suffix('\n', line).s for line in output]

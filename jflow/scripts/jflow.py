@@ -19,6 +19,8 @@ import jflow.cmd.resolve
 import jflow.cmd.start
 import jflow.cmd.sync
 
+import jflow.cmd.dlst
+
 
 def run():
     app.start()
