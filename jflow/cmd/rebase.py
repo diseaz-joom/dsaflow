@@ -12,13 +12,29 @@ from dsapy import flag
 from jflow import branch
 from jflow import config
 from jflow import publish
+from jflow import run
 from jflow import sync
 
 
 _logger = logging.getLogger(__name__)
 
 
-class Rebase(sync.SyncMixin, publish.ToolsMixin, branch.Controller, app.Command):
+class CleanMixin(run.Cmd):
+    def clean(self):
+        self.cmd_action_pipe([
+            ['git', 'ls-files', '--others', '--directory', '--exclude-standard'],
+            ['xargs', 'rm', '--recursive', '--force', '--verbose'],
+        ])
+
+
+class Clean(CleanMixin, app.Command):
+    name='clean-untracked'
+
+    def main(self):
+        self.clean()
+
+
+class Rebase(sync.SyncMixin, CleanMixin, publish.ToolsMixin, branch.Controller, app.Command):
     '''Rebase a branch.'''
     name='rebase'
 
@@ -78,17 +94,14 @@ class Rebase(sync.SyncMixin, publish.ToolsMixin, branch.Controller, app.Command)
         if self.flags.fork is not None:
             new_fork_b = self.branch_resolve(self.flags.fork, heads=heads)
 
-        self.cmd_action(['stg', 'rebase', '--merged', new_fork_b.full_ref()])
-        self.cmd_action(['git', 'clean', '-d', '--force'])
-        self.cmd_action_pipe([
-            ['git', 'ls-files', '--others', '--directory', '--exclude-standard'],
-            ['xargs', 'rm', '--recursive', '--force', '--verbose'],
-        ])
-
         if new_fork_b != fork_b:
             self.git_config_set(config.branch_key_fork(branch), new_fork_b.branch)
         if new_upstream_b != upstream_b:
             self.git_config_set(config.branch_key_upstream(branch), new_upstream_b.branch)
+
+        self.cmd_action(['stg', 'rebase', '--merged', new_fork_b.full_ref()])
+        self.cmd_action(['git', 'clean', '-d', '--force'])
+        self.clean()
 
         if need_publish:
             self.publish_local(branch, public_branch)

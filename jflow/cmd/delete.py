@@ -36,35 +36,42 @@ class DeleteCmd(branch.TreeBuilder, app.Command):
 
         parser.add_argument(
             'branch',
+            nargs='+',
             help='Branch to remove',
         )
 
     def main(self):
         self.git_check_workdir_is_clean()
 
-        if self.flags.branch == self.git_current_ref(short=True):
-            raise Error('Cannot delete current branch')
+        current_ref = self.git_current_ref(short=True)
 
-        cb = None
+        tree_branches = {}
         branches = self.branch_tree()
-        for b in branches.values():
-            if b.name == self.flags.branch:
-                cb = b
-                break
+        for arg_branch in self.flags.branch:
+            if arg_branch == current_ref:
+                raise Error('Cannot delete current branch')
+            for b in branches.values():
+                if b.name == arg_branch:
+                    tree_branches[arg_branch] = b
+                    break
+            if arg_branch not in tree_branches:
+                raise Error('Branch %r not found', arg_branch)
 
-        if cb is None:
-            raise Error('Branch %r not found', self.flags.branch)
+        for arg_branch in self.flags.branch:
+            cb = tree_branches[arg_branch]
 
-        if cb.debug:
-            self.cmd_action(['git', 'push', 'origin', ':{b.name}'.format(b=cb.debug)])
+            self.cmd_action(['git', 'config', '--remove-section', config.branch_key_base(cb.name)])
 
-        if cb.remote:
-            self.cmd_action(['git', 'push', 'origin', ':{b.name}'.format(b=cb.remote)])
+            if cb.debug:
+                self.cmd_action(['git', 'push', 'origin', ':{b.name}'.format(b=cb.debug)])
 
-        if cb.public:
-            self.cmd_action(['git', 'branch', '--delete', '--force', cb.public.name])
+            if cb.remote:
+                self.cmd_action(['git', 'push', 'origin', ':{b.name}'.format(b=cb.remote)])
 
-        if cb.stgit:
-            self.cmd_action(['stg', 'branch', '--delete', '--force', cb.name])
-        else:
-            self.cmd_action(['git', 'branch', '--delete', '--force', cb.name])
+            if cb.public:
+                self.cmd_action(['git', 'branch', '--delete', '--force', cb.public.name])
+
+            if cb.stgit:
+                self.cmd_action(['stg', 'branch', '--delete', '--force', cb.name])
+            else:
+                self.cmd_action(['git', 'branch', '--delete', '--force', cb.name])
