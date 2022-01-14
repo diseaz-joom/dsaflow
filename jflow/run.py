@@ -40,10 +40,12 @@ class Cmd(object):
             help='Force changes.'
         )
 
-    def cmd_output(self, args):
-        return self.cmd_output_ret(args)[0]
+    @classmethod
+    def cmd_output(cls, args):
+        return cls.cmd_output_ret(args)[0]
 
-    def cmd_output_ret(self, args, check=True):
+    @classmethod
+    def cmd_output_ret(cls, args, check=True):
         _logger.info('Run[yes]: %s', ' '.join(shlex.quote(s) for s in args))
         p = subprocess.run(args, encoding=_encoding, stdout=subprocess.PIPE, check=check, universal_newlines=True)
         return jflow.output_lines(p.stdout), p.returncode

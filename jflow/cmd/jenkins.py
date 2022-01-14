@@ -30,8 +30,15 @@ class Jenkins(git.Git, run.Cmd, app.Command):
             help='Alternative public branch for debugging without spamming PR',
         )
 
+        parser.add_argument(
+            'branch',
+            nargs='?',
+            default=cls.git_current_ref(short=True),
+            help='Branch to operate on',
+        )
+
     def main(self):
-        ref = self.git_current_ref(short=True)
+        ref = self.flags.branch
         if self.flags.debug:
             ref = self.git_config_get(config.branch_key_debug(ref))
         else:
