@@ -22,7 +22,7 @@ class Error(Exception):
     '''Base class for errors in the module.'''
 
 
-class SyncMixin(green.Mixin, branch.TreeBuilder, run.Cmd):
+class SyncMixin(green.Mixin, branch.TreeBuilder, git.Git, run.Cmd):
     @classmethod
     def add_arguments(cls, parser):
         super().add_arguments(parser)
@@ -34,19 +34,16 @@ class SyncMixin(green.Mixin, branch.TreeBuilder, run.Cmd):
         )
 
     def sync(self):
-        current_branch = self.git_current_ref(short=True)
-
         refs = {r.ref:r for r in self.for_each_ref()}
         remotes = {r.remote + '/' + r.name:r for r in refs.values() if r.fmt == 'remote'}
 
-        self.cmd_action(['git', 'fetch', '--all', '--prune'])
-        self.cmd_action(['git', 'checkout', '--detach', 'HEAD'])
-        if 'origin/develop' in remotes:
-            self.cmd_action(['git', 'branch', '--force', 'develop', 'origin/develop'])
-        if 'origin/master' in remotes:
-            self.cmd_action(['git', 'branch', '--force', 'master', 'origin/master'])
-        if 'origin/tested/develop' in remotes:
-            self.cmd_action(['git', 'branch', '--force', 'tested/develop', 'origin/tested/develop'])
-        self.cmd_action(['git', 'checkout', current_branch])
-        if self.flags.with_green:
-            self.green()
+        with self.git_detach_head():
+            self.cmd_action(['git', 'fetch', '--all', '--prune'])
+            if 'origin/develop' in remotes:
+                self.cmd_action(['git', 'branch', '--force', 'develop', 'origin/develop'])
+            if 'origin/master' in remotes:
+                self.cmd_action(['git', 'branch', '--force', 'master', 'origin/master'])
+            if not self.flags.with_green and green.GREEN_DEVELOP_UPSTREAM in remotes:
+                self.cmd_action(['git', 'branch', '--force', green.GREEN_DEVELOP, green.GREEN_DEVELOP_UPSTREAM])
+            if self.flags.with_green:
+                self.green()

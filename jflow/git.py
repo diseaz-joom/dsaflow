@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
+import contextlib
 import os
 import re
 import subprocess
@@ -109,6 +110,15 @@ class Git(run.Cmd):
     def git_branch_exists(cls, b):
         _, ret = cls.cmd_output_ret(['git', 'rev-parse', '--verify', b], check=False)
         return ret == os.EX_OK
+
+    @contextlib.contextmanager
+    def git_detach_head(self):
+        current_branch = self.git_current_ref(short=True)
+        try:
+            self.cmd_action(['git', 'checkout', '--detach', 'HEAD'])
+            yield current_branch
+        finally:
+            self.cmd_action(['git', 'checkout', current_branch])
 
 
 class Value(object):
