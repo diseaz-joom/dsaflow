@@ -285,7 +285,7 @@ class TreeBuilder(git.Git, run.Cmd):
                 if not ok:
                     continue
                 jflow_cfg[sk] = v
-            b.jflow = jflow_cfg
+            b.jflow_cfg = jflow_cfg
 
         # Attach .stgit branches to their parents
         for b in list(branches.values()):
@@ -302,9 +302,7 @@ class TreeBuilder(git.Git, run.Cmd):
         # Find jflow branches
         for b in list(branches.values()):
             key = config.branch_key_version(b.name)
-            if key not in cfg:
-                continue
-            b.jflow = True
+            b.jflow = (key in cfg)
 
         # Attach related branches to jflow
         for b in list(branches.values()):

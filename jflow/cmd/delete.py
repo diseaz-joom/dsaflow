@@ -60,18 +60,24 @@ class DeleteCmd(branch.TreeBuilder, app.Command):
         for arg_branch in self.flags.branch:
             cb = tree_branches[arg_branch]
 
-            self.cmd_action(['git', 'config', '--remove-section', config.branch_key_base(cb.name)])
+            if cb.jflow:
+                self.cmd_action(['git', 'config', '--remove-section', config.branch_key_base(cb.name)])
 
-            if cb.debug:
-                self.cmd_action(['git', 'push', 'origin', ':{b.name}'.format(b=cb.debug)])
+                if cb.debug:
+                    self.cmd_action(['git', 'push', 'origin', ':{b.name}'.format(b=cb.debug)])
 
-            if cb.remote:
-                self.cmd_action(['git', 'push', 'origin', ':{b.name}'.format(b=cb.remote)])
+                if cb.remote:
+                    self.cmd_action(['git', 'push', 'origin', ':{b.name}'.format(b=cb.remote)])
 
-            if cb.public:
-                self.cmd_action(['git', 'branch', '--delete', '--force', cb.public.name])
+                if cb.public:
+                    self.cmd_action(['git', 'branch', '--delete', '--force', cb.public.name])
 
-            if cb.stgit:
-                self.cmd_action(['stg', 'branch', '--delete', '--force', cb.name])
+                if cb.stgit:
+                    self.cmd_action(['stg', 'branch', '--delete', '--force', cb.name])
+                else:
+                    self.cmd_action(['git', 'branch', '--delete', '--force', cb.name])
             else:
-                self.cmd_action(['git', 'branch', '--delete', '--force', cb.name])
+                if cb.stgit:
+                    self.cmd_action(['stg', 'branch', '--delete', '--force', cb.name])
+                else:
+                    self.cmd_action(['git', 'branch', '--delete', '--force', cb.name])
