@@ -1,40 +1,26 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-"""Commons for jf."""
+class Struct(dict):
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw)
+        self.__dict__ = self
 
-class Error(Exception):
-    '''Base class for errors in the module.'''
+    @classmethod
+    def from_dict(cls, d):
+        return cls(d)
 
+    def copy(self):
+        return self.from_dict(self)
 
-Strip = collections.namedtuple('Strip', ['s', 'ok'])
+    def __getitem__(self, name):
+        try:
+            return super().__getitem__(name)
+        except (AttributeError, KeyError):
+            return None
 
-
-def strip_suffix(suffix, s):
-    if suffix and s.endswith(suffix):
-        return Strip(s=s[:len(suffix)], ok=True)
-    return Strip(s=s, ok=False)
-
-
-def strip_prefix(prefix, s):
-    if s.startswith(prefix):
-        return Strip(s=s[len(prefix):], ok=True)
-    return Strip(s=s, ok=False)
-
-
-def ensure_suffix(suffix, s):
-    if s.endswith(suffix):
-        return Strip(s=s, ok=True)
-    return Strip(s=s + suffix, ok=False)
-
-
-def ensure_prefix(prefix, s):
-    if s.startswith(prefix):
-        return Strip(s=s, ok=True)
-    return Strip(s=prefix + s, ok=False)
-
-
-def output_lines(output):
-    if hasattr(output, 'splitlines'):
-        return output.splitlines()
-    return [line.rstrip('\r\n') for line in output]
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except (AttributeError, KeyError):
+            return None

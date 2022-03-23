@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="diseaz-dsaflow",
-    version="0.0.2",
+    version="0.0.3",
     author="Dmitry Azhichakov",
     author_email="dazhichakov@gmail.com",
     description="Tools for my personal workflow",
@@ -17,7 +17,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
@@ -26,6 +26,7 @@ setuptools.setup(
     ],
     entry_points={
         "console_scripts": [
+            "jf=jf.cmd.jf:run",
             "jflow=jflow.scripts.jflow:run",
         ],
     },
