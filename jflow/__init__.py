@@ -40,7 +40,7 @@ def ensure_prefix(prefix, s):
 
 def iter_output_lines(output):
     if hasattr(output, 'split'):
-        return iter(output.splitlines())
+        return iter(output.split())
     return (strip_suffix('\n', line).s for line in output)
 
 
