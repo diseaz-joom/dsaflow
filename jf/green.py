@@ -34,9 +34,9 @@ class Mixin(jenkins.Mixin):
         if not green_branch_name:
             raise Error('No name for "tested" branch')
 
-        green_ref_name = git.Ref.branch_ref_name(git._REMOTE_LOCAL, green_branch_name)
+        green_ref_name = git.RefName.for_branch(git._REMOTE_LOCAL, green_branch_name)
         green_ref = gc.refs.get(green_ref_name, None)
-        green_upstream_ref_name = git.Ref.branch_ref_name(git._REMOTE_ORIGIN, green_branch_name)
+        green_upstream_ref_name = git.RefName.for_branch(git._REMOTE_ORIGIN, green_branch_name)
         green_upstream_ref = gc.refs.get(green_upstream_ref_name, None)
 
         branch_ref = branch.ref
@@ -97,13 +97,13 @@ class Mixin(jenkins.Mixin):
                 ])
 
     def green_sync(self, gc: git.Cache, branch_name: str, ref: git.Ref = None) -> Optional[git.Ref]:
-        upstream_ref_name = git.Ref.branch_ref_name(git._REMOTE_ORIGIN, branch_name)
+        upstream_ref_name = git.RefName.for_branch(git._REMOTE_ORIGIN, branch_name)
         upstream_ref = gc.refs.get(upstream_ref_name, None)
         if not upstream_ref:
             return ref
 
         if not ref:
-            ref_name = git.Ref.branch_ref_name(git._REMOTE_LOCAL, branch_name)
+            ref_name = git.RefName.for_branch(git._REMOTE_LOCAL, branch_name)
             ref = gc.refs.get(ref_name, None)
         else:
             ref_name = ref.name

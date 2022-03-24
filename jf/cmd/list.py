@@ -38,7 +38,7 @@ class ListLine:
 
     @functools.lru_cache(maxsize=None)
     def is_merged_into(self, m: git.Ref) -> bool:
-        return m.is_valid and self.b.ref.is_merged_into(self.gc, m)
+        return m.is_valid and self.gc.is_merged_into(self.b.ref.sha, m.sha) # self.b.ref.is_merged_into(self.gc, m)
 
     @property
     def public(self) -> str:

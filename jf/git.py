@@ -112,19 +112,40 @@ class Commit(object):
         return gc.is_merged_into(self.sha, other.sha)
 
 
-class Ref(object):
-    '''Represents a reference in repo.'''
-    def __init__(self, name: str, sha: Optional[str]):
+class RefName:
+    '''Reference name manipulations.'''
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.sha = sha
+
+    @staticmethod
+    def for_branch(remote: str, branch_name: str) -> str:
+        if remote == _REMOTE_LOCAL:
+            return HEAD_PREFIX + branch_name
+        return REMOTE_PREFIX + remote + '/' + branch_name
 
     @functools.cached_property
     def short(self) -> str:
-        return ref_short(self.name)
+        '''Returns shortest valid abbreviation for full ref_name.'''
+        for prefix in (HEAD_PREFIX, TAG_PREFIX, REMOTE_PREFIX, GENERIC_PREFIX):
+            if self.name.startswith(prefix):
+                return self.name[len(prefix):]
+        return self.name
 
     @functools.cached_property
     def kind(self) -> Kind:
-        return Kind.from_refname(self.name)
+        if self.name.startswith(HEAD_PREFIX):
+            if self.name.endswith(STGIT_SUFFIX):
+                return Kind.stgit
+            return Kind.head
+        if self.name.startswith(TAG_PREFIX):
+            return Kind.tag
+        if self.name.startswith(REMOTE_PREFIX):
+            return Kind.remote
+        if self.name.startswith(PATCH_PREFIX):
+            if self.name.endswith(PATCH_LOG_SUFFIX):
+                return Kind.patch_log
+            return Kind.patch
+        return Kind.unknown
 
     @functools.cached_property
     def remote(self) -> Optional[str]:
@@ -145,16 +166,17 @@ class Ref(object):
         return None
 
     def __repr__(self) -> str:
-        return 'Ref({s.name!r}, {s.sha!r})'.format(s=self)
+        return f'RefName({self.name!r})'
 
-    def is_merged_into(self, gc: 'Cache', other: 'Ref') -> bool:
-        return gc.is_merged_into(self.sha, other.sha)
 
-    @classmethod
-    def branch_ref_name(cls, remote: str, branch_name: str) -> str:
-        if remote == _REMOTE_LOCAL:
-            return HEAD_PREFIX + branch_name
-        return REMOTE_PREFIX + remote + '/' + branch_name
+class Ref(RefName):
+    '''Represents a reference in repo.'''
+    def __init__(self, name: str, sha: Optional[str]) -> None:
+        super().__init__(name)
+        self.sha = sha
+
+    def __repr__(self) -> str:
+        return f'Ref({self.name!r}, {self.sha!r})'
 
     @property
     def is_valid(self) -> bool:
@@ -205,35 +227,160 @@ class PatchInfo(object):
 BranchT = TypeVar('BranchT', bound='Branch')
 
 
-class Branch(object):
-    def __init__(
-            self,
-            gc: 'Cache',
-            ref: Ref,
-    ):
-        self.gc = gc
+class GenericBranch:
+    def __init__(self, cfg: config.V1, ref: RefName):
+        if not ref.branch_name:
+            raise Error(f'Invalid branch ref: {ref.name}')
+        self.cfg = cfg
         self.ref = ref
 
     def __repr__(self):
-        return 'Branch({})'.format(self.ref)
-
-    @property
-    def is_jflow(self) -> bool:
-        return self.jflow_version is not None
-
-    @property
-    def is_stgit(self) -> bool:
-        return self.stgit_version is not None
+        return 'GenericBranch({})'.format(self.ref)
 
     @property
     def name(self) -> str:
         return self.ref.short
 
-    def gen_related_refs(self) -> Generator[Ref, None, None]:
-        if self.public:
-            yield self.public
-        if self.stgit:
-            yield self.stgit
+    @property
+    def repo_remote(self) -> str:
+        return _REMOTE_ORIGIN
+
+    @property
+    def is_jflow(self) -> bool:
+        return self.jflow_version is not None
+
+    @functools.cached_property
+    def jflow_version(self) -> Optional[int]:
+        return self.cfg.branch(self.name).jf().version().get_int()
+
+    @property
+    def is_stgit(self) -> bool:
+        return self.stgit_version is not None
+
+    @functools.cached_property
+    def stgit_version(self) -> Optional[int]:
+        return self.cfg.branch(self.name).stgit().version().get_int()
+
+    @functools.cached_property
+    def stgit_name(self) -> Optional[RefName]:
+        if not self.is_stgit:
+            return None
+        return RefName(self.ref.name + STGIT_SUFFIX)
+
+    @functools.cached_property
+    def public_branch_name(self) -> Optional[str]:
+        if self.jflow_version is None:
+            return None
+        elif self.jflow_version == 1:
+            return self.cfg.branch(self.name).jf().public().get()
+        raise UnsupportedJflowVersionError(self.jflow_version)
+
+    @functools.cached_property
+    def public_name(self) -> Optional[RefName]:
+        if not self.public_branch_name:
+            return None
+        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.public_branch_name)
+        return RefName(ref_name)
+
+    @functools.cached_property
+    def debug_branch_name(self) -> Optional[str]:
+        if self.jflow_version is None:
+            return None
+        elif self.jflow_version == 1:
+            return self.cfg.branch(self.name).jf().debug().get()
+        raise UnsupportedJflowVersionError(self.jflow_version)
+
+    @functools.cached_property
+    def debug_name(self) -> Optional[RefName]:
+        if not self.debug_branch_name:
+            return None
+        ref_name = RefName.for_branch(self.repo_remote, self.debug_branch_name)
+        return RefName(ref_name)
+
+    @functools.cached_property
+    def remote_branch_name(self) -> Optional[str]:
+        if self.jflow_version is None:
+            return self.name
+        elif self.jflow_version == 1:
+            return self.cfg.branch(self.name).jf().remote().get()
+        raise UnsupportedJflowVersionError(self.jflow_version)
+
+    @functools.cached_property
+    def remote_name(self) -> Optional[RefName]:
+        if not self.remote_branch_name:
+            return None
+        ref_name = RefName.for_branch(self.repo_remote, self.remote_branch_name)
+        return RefName(ref_name)
+
+    @functools.cached_property
+    def upstream_branch_name(self) -> Optional[str]:
+        if self.jflow_version is None:
+            remote = self.cfg.branch(self.name).remote().get()
+            if remote != _REMOTE_LOCAL:
+                return None
+            merge = self.cfg.branch(self.name).merge().get()
+            if merge:
+                return RefName(merge).branch_name
+            return None
+        elif self.jflow_version == 1:
+            return self.cfg.branch(self.name).jf().upstream().get()
+        raise UnsupportedJflowVersionError(self.jflow_version)
+
+    @functools.cached_property
+    def upstream_name(self) -> Optional[RefName]:
+        if not self.upstream_branch_name:
+            return None
+        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.upstream_branch_name)
+        return RefName(ref_name)
+
+    @functools.cached_property
+    def fork_branch_name(self) -> Optional[str]:
+        if self.jflow_version is None:
+            return self.upstream_branch_name
+        elif self.jflow_version == 1:
+            return self.cfg.branch(self.name).jf().fork().get()
+        raise UnsupportedJflowVersionError(self.jflow_version)
+
+    @functools.cached_property
+    def fork_name(self) -> Optional[RefName]:
+        if not self.fork_branch_name:
+            return None
+        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.fork_branch_name)
+        return RefName(ref_name)
+
+    @functools.cached_property
+    def tested_branch_name(self) -> Optional[str]:
+        return self.cfg.branch(self.name).jf().tested().get()
+
+    @functools.cached_property
+    def tested_name(self) -> Optional[RefName]:
+        if not self.tested_branch_name:
+            return None
+        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.tested_branch_name)
+        return RefName(ref_name)
+
+    def gen_related_refs(self) -> Generator[RefName, None, None]:
+        if self.public_name:
+            yield self.public_name
+        if self.stgit_name:
+            yield self.stgit_name
+
+
+class Branch(GenericBranch):
+    def __init__(
+            self,
+            gc: 'Cache',
+            ref: Ref,
+    ):
+        super().__init__(gc.cfg, ref)
+        self.gc = gc
+
+    def __repr__(self):
+        return 'Branch({})'.format(self.ref)
+
+    @functools.cached_property
+    def generic(self) -> GenericBranch:
+        return GenericBranch(self.gc.cfg, self.ref)
 
     @functools.cached_property
     def patches(self) -> List[PatchInfo]:
@@ -254,140 +401,67 @@ class Branch(object):
         return result
 
     @functools.cached_property
-    def public_branch_name(self) -> Optional[str]:
-        if self.is_jflow:
-            if self.jflow_version != 1:
-                raise UnsupportedJflowVersionError(self.jflow_version)
-        else:
-            return None
-        return self.gc.cfg.branch(self.name).jf().public().get()
-
-    @functools.cached_property
-    def public_ref_name(self) -> Optional[str]:
-        if not self.public_branch_name:
-            return None
-        return Ref.branch_ref_name(_REMOTE_LOCAL, self.public_branch_name)
-
-    @functools.cached_property
     def public(self) -> Optional[Ref]:
-        if not self.public_ref_name:
+        ref_name = self.public_name
+        if not ref_name:
             return None
-        return self.gc.refs.get(self.public_ref_name, None)
-
-    @functools.cached_property
-    def debug_ref_name(self) -> Optional[str]:
-        if self.is_jflow:
-            if self.jflow_version != 1:
-                raise UnsupportedJflowVersionError(self.jflow_version)
-        else:
-            return None
-        debug_branch_name = self.gc.cfg.branch(self.name).jf().debug().get()
-        if not debug_branch_name:
-            return None
-        return Ref.branch_ref_name(_REMOTE_ORIGIN, debug_branch_name)
+        return self.gc.refs.get(ref_name.name, None)
 
     @functools.cached_property
     def debug(self) -> Optional[Ref]:
-        if not self.debug_ref_name:
+        ref_name = self.debug_name
+        if not ref_name:
             return None
-        return self.gc.refs.get(self.debug_ref_name, None)
-
-    @functools.cached_property
-    def jflow_version(self) -> Optional[int]:
-        v = self.gc.cfg.branch(self.name).jf().version().get()
-        if v is None:
-            return None
-        return int(v)
-
-    @functools.cached_property
-    def stgit_version(self) -> Optional[int]:
-        v = self.gc.cfg.branch(self.name).stgit().version().get()
-        if v is None:
-            return None
-        return int(v)
+        return self.gc.refs.get(ref_name.name, None)
 
     @functools.cached_property
     def stgit(self) -> Optional[Ref]:
-        return self.gc.refs.get(self.ref.name + STGIT_SUFFIX, None)
-
-    @functools.cached_property
-    def remote_ref_name(self) -> str:
-        if self.is_jflow:
-            if self.jflow_version == 1:
-                remote_branch_name = self.gc.cfg.branch(self.name).jf().remote().get()
-                return Ref.branch_ref_name(_REMOTE_ORIGIN, remote_branch_name)
-            else:
-                raise UnsupportedJflowVersionError(self.jflow_version)
-        remote = self.gc.cfg.branch(self.name).remote().get(_REMOTE_LOCAL)
-        merge_ref_name = self.gc.cfg.branch(self.name).merge().get()
-        if merge_ref_name:
-            merge_ref = Ref(merge_ref_name, None)
-            merge_branch_name = merge_ref.short
-        else:
-            merge_branch_name = self.name
-        return Ref.branch_ref_name(remote, merge_branch_name)
+        ref_name = self.stgit_name
+        if not ref_name:
+            return None
+        return self.gc.refs.get(ref_name.name, None)
 
     @functools.cached_property
     def remote(self) -> Optional[Ref]:
-        return self.gc.refs.get(self.remote_ref_name, None)
-
-    @functools.cached_property
-    def fork_ref_name(self) -> str:
-        if self.is_jflow:
-            if self.jflow_version == 1:
-                fork_branch_name = self.gc.cfg.branch(self.name).jf().fork().get()
-                fork_ref_name = Ref.branch_ref_name(_REMOTE_LOCAL, fork_branch_name)
-                return fork_ref_name or self.upstream_ref_name
-            else:
-                raise UnsupportedJflowVersionError(self.jflow_version)
-        return self.upstream_ref_name
+        ref_name = self.remote_name
+        if not ref_name:
+            return None
+        return self.gc.refs.get(ref_name.name, None)
 
     @functools.cached_property
     def fork(self) -> Optional[Ref]:
-        return self.gc.refs.get(self.fork_ref_name, None)
+        ref_name = self.fork_name
+        if not ref_name:
+            return None
+        return self.gc.refs.get(ref_name.name, None)
 
     @functools.cached_property
     def fork_branch(self) -> Optional['Branch']:
-        return self.gc.branch_by_ref.get(self.fork_ref_name, None)
-
-    @functools.cached_property
-    def upstream_ref_name(self) -> str:
-        if self.is_jflow:
-            if self.jflow_version == 1:
-                upstream_branch_name = self.gc.cfg.branch(self.name).jf().upstream().get()
-                upstream_ref_name = Ref.branch_ref_name(_REMOTE_LOCAL, upstream_branch_name)
-            else:
-                raise UnsupportedJflowVersionError(self.jflow_version)
-        elif self.is_stgit:
-            upstream_ref_name = self.gc.cfg.branch(self.name).stgit().parentbranch().get()
-        else:
-            remote = self.gc.cfg.branch(self.name).remote().get(_REMOTE_LOCAL)
-            merge_ref_name = self.gc.cfg.branch(self.name).merge().get()
-            if merge_ref_name:
-                merge_ref = Ref(merge_ref_name, None)
-                merge_branch_name = merge_ref.short
-            else:
-                merge_branch_name = self.name
-            upstream_ref_name = Ref.branch_ref_name(remote, merge_branch_name)
-        return upstream_ref_name
+        r = self.fork
+        if not r:
+            return None
+        return self.gc.branch_by_ref.get(r.name, None)
 
     @functools.cached_property
     def upstream(self) -> Optional[Ref]:
-        return self.gc.refs.get(self.upstream_ref_name, None)
+        ref_name = self.upstream_name
+        if not ref_name:
+            return None
+        return self.gc.refs.get(ref_name.name, None)
 
     @functools.cached_property
     def upstream_branch(self) -> Optional['Branch']:
-        return self.gc.branch_by_ref.get(self.upstream_ref_name, None)
-
-    @functools.cached_property
-    def tested_branch_name(self) -> Optional[str]:
-        return self.gc.cfg.branch(self.name).jf().tested().get()
+        r = self.upstream
+        if not r:
+            return None
+        return self.gc.branch_by_ref.get(r.name, None)
 
     @functools.cached_property
     def tested_branch(self) -> Optional['Branch']:
-        if not self.tested_branch_name:
+        r = self.tested_name
+        if not r:
             return None
-        return self.gc.branches.get(self.tested_branch_name, None)
+        return self.gc.branch_by_ref.get(r.name, None)
 
     @functools.cached_property
     def hidden(self) -> bool:
@@ -420,7 +494,7 @@ _cache_properties = {'cfg'}
 
 
 class Cache(object):
-    def __init__(self, cfg=None):
+    def __init__(self, cfg: config.V1 = None):
         self.cfg = cfg or config.V1()
 
     def reset(self):
@@ -456,15 +530,13 @@ class Cache(object):
         '''
         return {name: refs[0] for name, refs in self.refs_abbrevs.items() if len(refs) == 1}
 
-    def get_ref(self, ref_name) -> Optional[Ref]:
+    def get_ref(self, ref_name) -> Ref:
         '''Gets a reference by its name.
 
         Raises:
         - AmbiguousRefNameError
         '''
-        refs = self.refs_abbrevs.get(ref_name, None)
-        if not refs:
-            return None
+        refs = self.refs_abbrevs[ref_name]
         if len(refs) > 1:
             raise AmbiguousRefNameError('ambiguous ref name {!r} -> {!r}'.format(ref_name, [r.name for r in refs]))
         return refs[0]
@@ -583,14 +655,6 @@ def gen_refs():
         yield Ref(name, sha)
 
 
-def ref_short(ref_name):
-    '''Returns shortest valid abbreviation for full ref_name.'''
-    for prefix in (HEAD_PREFIX, TAG_PREFIX, REMOTE_PREFIX, GENERIC_PREFIX):
-        if ref_name.startswith(prefix):
-            return ref_name[len(prefix):]
-    return ref_name
-
-
 def ref_abbrevs(ref_name: str) -> List[str]:
     '''Builds valid abbreviation for full ref_name.'''
     result = []
@@ -640,11 +704,10 @@ def _gen_prefixes(full_prefix):
 
 @contextlib.contextmanager
 def detach_head():
-    if not current_ref:
-        raise Error('Undetected current ref')
-
     try:
-        command.run(['git', 'checkout', '--detach', 'HEAD'])
+        if current_branch:
+            command.run(['git', 'checkout', '--detach', 'HEAD'])
         yield current_branch
     finally:
-        command.run(['git', 'checkout', current_ref])
+        if current_branch:
+            command.run(['git', 'checkout', current_branch])

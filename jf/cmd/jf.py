@@ -3,10 +3,10 @@
 
 import jf.cmd.branch
 import jf.cmd.commits
-import jf.cmd.green
 import jf.cmd.list
 import jf.cmd.rebase
 import jf.cmd.refs
+import jf.cmd.sync
 
 from dsapy import app
 

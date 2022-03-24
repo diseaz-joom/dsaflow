@@ -92,6 +92,12 @@ class Key(object):
             return default
         return strconv.parse_bool(v, default)
 
+    def get_int(self, default: int = None) -> Optional[int]:
+        v = self.get()
+        if v is None:
+            return default
+        return int(v)
+
     def get_list(self, default: List[str] = None) -> List[str]:
         v = self.config.config.get(self.key(), default)
         if isinstance(v, list):

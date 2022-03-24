@@ -49,7 +49,7 @@ class Mixin(green.Mixin, app.Command):
                 b_ref = b.ref
                 b_sha = b_ref.sha
                 b_commit = gc.commits[b_sha]
-                if gc.commits[upstream_sha].is_merged_into(gc, b_commit):
+                if gc.is_merged_into(upstream_sha, b_sha): #gc.commits[upstream_sha].is_merged_into(gc, b_commit):
                     return
                 command.run(['git', 'branch', '--force', b.name, upstream.name])
 

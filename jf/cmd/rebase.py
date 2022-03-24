@@ -91,8 +91,6 @@ class Rebase(CleanMixin, sync.Mixin, app.Command):
         upstream_ref = branch.upstream
         if self.flags.upstream:
             upstream_ref = gc.get_ref(self.flags.upstream)
-            if not upstream_ref:
-                raise Error('Not found: %r', self.flags.upstream)
             if upstream_ref.kind != git.Kind.head:
                 raise Error('Not a local branch: %r', upstream_ref.name)
         update_upstream = upstream_ref.name != branch.upstream.name
@@ -101,8 +99,6 @@ class Rebase(CleanMixin, sync.Mixin, app.Command):
         fork_ref = branch.fork
         if self.flags.fork:
             fork_ref = gc.get_ref(self.flags.fork)
-            if not fork_ref:
-                raise Error('Not found: %r', self.flags.fork)
             if fork_ref.kind != git.Kind.head:
                 raise Error('Not a local branch: %r', fork_ref.name)
         elif update_upstream:
