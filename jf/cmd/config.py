@@ -15,7 +15,7 @@ class Error(Exception):
     '''Base for errors in the module.'''
 
 
-_jflow_keys = ['version', 'public', 'debug', 'upstream', 'fork', 'remote', 'hidden', 'tested', 'sync']
+_jflow_keys = ['version', 'public', 'debug', 'ldebug', 'upstream', 'fork', 'review', 'hidden', 'tested', 'sync']
 
 
 class Config(app.Command):
@@ -90,7 +90,7 @@ class Info(app.Command):
         gc = git.Cache()
         b = gc.branches[self.flags.branch]
         print('Branch:')
-        for k in ['name', 'is_jflow', 'is_stgit', 'upstream_name', 'upstream', 'fork_name', 'fork', 'public_name', 'public', 'debug_name', 'debug', 'remote_name', 'remote', 'hidden', 'tested']:
+        for k in ['name', 'is_jflow', 'is_stgit', 'upstream_name', 'upstream', 'fork_name', 'fork', 'public_name', 'public', 'debug_name', 'debug', 'ldebug_name', 'ldebug', 'review_name', 'review', 'hidden', 'tested']:
             kv = getattr(b, k)
             print(f'  {k}: {kv!r}')
         bk = gc.cfg.branch(b.name).jf

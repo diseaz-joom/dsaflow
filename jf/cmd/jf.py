@@ -3,7 +3,9 @@
 
 import jf.cmd.commits
 import jf.cmd.config
+import jf.cmd.jenkins
 import jf.cmd.list
+import jf.cmd.publish
 import jf.cmd.rebase
 import jf.cmd.refs
 import jf.cmd.sync

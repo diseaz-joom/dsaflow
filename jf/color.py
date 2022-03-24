@@ -3,7 +3,7 @@
 
 from jf import common
 
-Colors = common.Struct({
+_colors_dict = {
     'N': '\033[0m',
 
     'k': '\033[0;30m',
@@ -25,4 +25,7 @@ Colors = common.Struct({
     'W': '\033[1;37m',
 
     'ul': '\033[4m',
-})
+}
+
+Colors = common.Struct(_colors_dict)
+NoColors = common.Struct({c:'' for c in _colors_dict.keys()})

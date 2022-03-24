@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-"""Sync from remote."""
+"""Rebase branch to a fresh tip."""
 
 import logging
 import re
@@ -57,6 +57,12 @@ class Rebase(CleanMixin, sync.Mixin, app.Command):
         super().add_arguments(parser)
 
         parser.add_argument(
+            '-m', '--message',
+            metavar='MESSAGE',
+            default=None,
+            help='Message to commit current changes before rebase',
+        )
+        parser.add_argument(
             '--upstream',
             metavar='BRANCH',
             help='Use this branch as `upstream` parameter',
@@ -84,15 +90,15 @@ class Rebase(CleanMixin, sync.Mixin, app.Command):
             raise Error('HEAD is not a branch')
         branch = gc.branches[branch_name]
 
-        need_publish = branch.public_ref_name in gc.refs
+        need_publish = bool(branch.public)
         if need_publish:
-            branch.publish_local()
+            branch.publish_local_public(msg=self.flags.message)
 
         upstream_ref = branch.upstream
         if self.flags.upstream:
             upstream_ref = gc.get_ref(self.flags.upstream)
             if upstream_ref.kind != git.Kind.head:
-                raise Error('Not a local branch: %r', upstream_ref.name)
+                raise Error(f'Not a local branch: {upstream_ref.name!r}')
         update_upstream = upstream_ref.name != branch.upstream.name
         upstream_branch = gc.branches[upstream_ref.branch_name]
 
@@ -100,7 +106,7 @@ class Rebase(CleanMixin, sync.Mixin, app.Command):
         if self.flags.fork:
             fork_ref = gc.get_ref(self.flags.fork)
             if fork_ref.kind != git.Kind.head:
-                raise Error('Not a local branch: %r', fork_ref.name)
+                raise Error(f'Not a local branch: {fork_ref.name!r}')
         elif update_upstream:
             upstream_branch = gc.branch_by_ref[upstream_ref.name]
             tested_branch = upstream_branch.tested_branch
@@ -111,8 +117,8 @@ class Rebase(CleanMixin, sync.Mixin, app.Command):
         update_fork = fork_ref.name != branch.fork.name
         fork_branch = gc.branches[fork_ref.branch_name]
 
-        _logger.debug('%s', f'Upstream: {upstream_ref.name!r} ({update_upstream})')
-        _logger.debug('%s', f'Fork: {fork_ref.name!r} ({update_fork})')
+        _logger.debug(f'Upstream: {upstream_ref.name!r} ({update_upstream})')
+        _logger.debug(f'Fork: {fork_ref.name!r} ({update_fork})')
 
         if not branch.is_jflow:
             raise NotImplementedError('Rebase for non-jflow branches is not implemented yet.')
@@ -132,4 +138,4 @@ class Rebase(CleanMixin, sync.Mixin, app.Command):
         self.clean()
 
         if need_publish:
-            branch.publish_local(msg=f'Merge {fork_branch.name} into {branch.name}')
+            branch.publish_local_public(msg=f'Merge {fork_branch.name} into {branch.name}')

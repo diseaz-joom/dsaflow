@@ -16,9 +16,10 @@ class Error(Exception):
 
 
 class ListLine:
-    def __init__(self, gc, b):
+    def __init__(self, gc: git.Cache, b: git.Branch, maxlen: int = None):
         self.gc = gc
         self.b = b
+        self.maxlen = maxlen
 
     @property
     def typ(self) -> str:
@@ -38,7 +39,7 @@ class ListLine:
 
     @functools.lru_cache(maxsize=None)
     def is_merged_into(self, m: git.Ref) -> bool:
-        return m.is_valid and self.gc.is_merged_into(self.b.ref.sha, m.sha) # self.b.ref.is_merged_into(self.gc, m)
+        return m.is_valid and self.gc.is_merged_into(self.b.sha, m.sha)
 
     @property
     def public(self) -> str:
@@ -47,14 +48,18 @@ class ListLine:
         return '.'
 
     @property
-    def remote(self) -> str:
-        if self.b.remote:
+    def review(self) -> str:
+        if self.b.review:
+            return 'R'
+        if self.b.public:
             return 'r'
         return '.'
 
     @property
     def debug(self) -> str:
         if self.b.debug:
+            return 'D'
+        if self.b.ldebug:
             return 'd'
         return '.'
 
@@ -79,28 +84,43 @@ class ListLine:
         return 'D' if self.is_merged_into(self.gc.refs['develop']) else '.'
 
     @property
-    def upstream(self) -> str:
-        return git.Ref(self.b.upstream_ref_name, None).short
+    def name_pad(self) -> str:
+        if not self.maxlen:
+            return ''
+        pad = self.maxlen - len(self.b.name)
+        if pad < 0:
+            return ''
+        return ' ' * pad
+
+    @property
+    def description(self) -> str:
+        if not self.b.description:
+            return ''
+        return ' | ' + self.b.description
 
 
-@app.main()
-def list(flags, **kwargs):
+class List(app.Command):
     '''List branches.'''
-    gc = git.Cache()
 
-    print('''
+    name = 'list'
+
+    def main(self):
+        gc = git.Cache()
+
+        print('''
 +------- 'j' = controlled by jflow; 's' = controlled by StGit
-|+------ 'p' = has public branch
-||+----- 'r' = has remote branch for review and merging
-|||+---- 'd' = has remote branch for debug
-||||+--- merged into: 'U' = upstream; 'F' = fork; 'D' = develop; 'M' = master
-|||||''')
-    for b in gc.branches.values():
-        if b.hidden:
-            continue
-        print('{i.typ}{i.public}{i.remote}{i.debug}{i.merged} {c.W}{b.name}{c.N}'.format(
-            i=ListLine(gc, b), b=b, c=color.Colors,
-        ))
+|+------ 'r' = has local review branch; 'R' = has remote review
+||+----- 'd' = has local debug branch; 'D' = has remote debug
+|||+---- merged into: 'U' = upstream; 'F' = fork; 'D' = develop; 'M' = master
+||||''')
+        branches = list(gc.branches.values())
+        maxlen = max(len(b.name) for b in branches)
+        for b in branches:
+            if b.hidden:
+                continue
+            print('{i.typ}{i.review}{i.debug}{i.merged} {c.W}{b.name}{c.N}{i.name_pad}{i.description}'.format(
+                i=ListLine(gc, b, maxlen=maxlen), b=b, c=color.Colors,
+            ))
 
 
 def _run():

@@ -25,6 +25,10 @@ class V1(object):
     def branch(self, name: str) -> 'BranchKey':
         return BranchKey(cfg=self, parts=['branch', name])
 
+    @functools.lru_cache(maxsize=None)
+    def remote(self, name: str) -> 'RemoteKey':
+        return RemoteKey(cfg=self, parts=['remote', name])
+
     @functools.cached_property
     def jf(self) -> 'JfKey':
         return JfKey(cfg=self, parts=['jflow'])
@@ -43,8 +47,6 @@ class Key(object):
     def __init__(self, cfg: 'V1' = None, parts: List[str] = None):
         self.cfg: V1 = cfg or V1()
         self.parts: List[str] = parts or []
-        if not parts and k:
-            self.parts = k.parts
 
     def __repr__(self) -> str:
         return 'Key({})'.format(
@@ -98,7 +100,7 @@ class Key(object):
         return int(self.value)
 
     def get_list(self, default: List[str] = None) -> List[str]:
-        v = self.config.config.get(self.key(), None)
+        v = self.cfg.config.get(self.key, None)
         return v or default or []
 
     def set(self, value: str) -> None:
@@ -131,6 +133,10 @@ class BranchKey(Key):
     def merge(self) -> Key:
         return Key.append(self, 'merge')
 
+    @functools.cached_property
+    def description(self) -> Key:
+        return Key.append(self, 'description')
+
 
 class JfBranchKey(Key):
     @functools.cached_property
@@ -146,6 +152,10 @@ class JfBranchKey(Key):
         return Key.append(self, 'debug')
 
     @functools.cached_property
+    def ldebug(self) -> Key:
+        return Key.append(self, 'ldebug')
+
+    @functools.cached_property
     def upstream(self) -> Key:
         return Key.append(self, 'upstream')
 
@@ -154,7 +164,7 @@ class JfBranchKey(Key):
         return Key.append(self, 'fork')
 
     @functools.cached_property
-    def remote(self) -> Key:
+    def review(self) -> Key:
         return Key.append(self, 'remote')
 
     # Properties below are not only for jflow-controlled branches
@@ -199,8 +209,14 @@ class JfKey(Key):
         return Key.append(self, 'default-green')
 
     @functools.cached_property
-    def origin(self) -> Key:
-        return Key.append(self, 'origin')
+    def remote(self) -> Key:
+        return Key.append(self, 'remote')
+
+
+class RemoteKey(Key):
+    @functools.cached_property
+    def url(self) -> Key:
+        return Key.append(self, 'url')
 
 
 class JfTemplateKey(Key):

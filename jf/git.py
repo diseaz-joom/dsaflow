@@ -123,6 +123,17 @@ class RefName:
             return HEAD_PREFIX + branch_name
         return REMOTE_PREFIX + remote + '/' + branch_name
 
+    def __repr__(self) -> str:
+        return f'RefName({self.name!r})'
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, RefName):
+            return False
+        return self.name == other.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
     @functools.cached_property
     def short(self) -> str:
         '''Returns shortest valid abbreviation for full ref_name.'''
@@ -165,13 +176,10 @@ class RefName:
             return branch_name
         return None
 
-    def __repr__(self) -> str:
-        return f'RefName({self.name!r})'
-
 
 class Ref(RefName):
     '''Represents a reference in repo.'''
-    def __init__(self, name: str, sha: Optional[str]) -> None:
+    def __init__(self, name: str, sha: str) -> None:
         super().__init__(name)
         self.sha = sha
 
@@ -228,6 +236,40 @@ BranchT = TypeVar('BranchT', bound='Branch')
 
 
 class GenericBranch:
+    '''Branch is umbrella entity to describe logical branch.
+
+    Logical branch includes several required physical branches.
+
+        - Main branch, referenced by `ref` property is the branch in the local
+          repository you directly work with.  It's usually under StGit control.
+
+        - `upstream` is what main branch is logically tracks and eventually will
+          be merged into.
+
+        - `fork` is what main branch is physically forked from.  It may be
+          different from upstream.  E.g. there may be a branch that follows
+          upstream branch and only fast-forwards only if CI tests are passed.
+          It's a good idea to put this branch as `fork`.
+
+        - `stgit` branch is a technical branch for StGit.
+
+        - `public` branch is a review-friendly branch in the local repository.
+          With some configurations it can be the same as the main branch.
+          Usually, for StGit-controlled branches `stg publish` builds public
+          branch.
+
+        - `review` is a branch in remote repository for review.  Usually it is a
+          public branch pushed into remote repository.
+
+        - `debug` is a branch in remote repository for running CI tests.
+
+        - `ldebug` is a debug branch in the local repository.
+
+        - `tested` branch is what new branches should be forked from by default
+          if this branch is upstream.  It's not only for jflow-controlled
+          branches.
+    '''
+
     def __init__(self, cfg: config.V1, ref: RefName):
         if not ref.branch_name:
             raise Error(f'Invalid branch ref: {ref.name}')
@@ -242,8 +284,8 @@ class GenericBranch:
         return self.ref.short
 
     @property
-    def repo_remote(self) -> str:
-        return _REMOTE_ORIGIN
+    def remote(self) -> str:
+        return self.cfg.jf.remote.value or _REMOTE_ORIGIN
 
     @property
     def is_jflow(self) -> bool:
@@ -260,6 +302,12 @@ class GenericBranch:
     @functools.cached_property
     def stgit_version(self) -> Optional[int]:
         return self.cfg.branch(self.name).stgit.version.as_int
+
+    @functools.cached_property
+    def stgit_branch_name(self) -> Optional[str]:
+        if not self.is_stgit:
+            return None
+        return self.name + STGIT_SUFFIX
 
     @functools.cached_property
     def stgit_name(self) -> Optional[RefName]:
@@ -294,22 +342,37 @@ class GenericBranch:
     def debug_name(self) -> Optional[RefName]:
         if not self.debug_branch_name:
             return None
-        ref_name = RefName.for_branch(self.repo_remote, self.debug_branch_name)
+        ref_name = RefName.for_branch(self.remote, self.debug_branch_name)
         return RefName(ref_name)
 
     @functools.cached_property
-    def remote_branch_name(self) -> Optional[str]:
+    def ldebug_branch_name(self) -> Optional[str]:
         if self.jflow_version is None:
-            return self.name
+            return None
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf.remote.value
+            return self.cfg.branch(self.name).jf.ldebug.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def remote_name(self) -> Optional[RefName]:
-        if not self.remote_branch_name:
+    def ldebug_name(self) -> Optional[RefName]:
+        if not self.ldebug_branch_name:
             return None
-        ref_name = RefName.for_branch(self.repo_remote, self.remote_branch_name)
+        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.ldebug_branch_name)
+        return RefName(ref_name)
+
+    @functools.cached_property
+    def review_branch_name(self) -> Optional[str]:
+        if self.jflow_version is None:
+            return self.name
+        elif self.jflow_version == 1:
+            return self.cfg.branch(self.name).jf.review.value
+        raise UnsupportedJflowVersionError(self.jflow_version)
+
+    @functools.cached_property
+    def review_name(self) -> Optional[RefName]:
+        if not self.review_branch_name:
+            return None
+        ref_name = RefName.for_branch(self.remote, self.review_branch_name)
         return RefName(ref_name)
 
     @functools.cached_property
@@ -360,8 +423,10 @@ class GenericBranch:
         return RefName(ref_name)
 
     def gen_related_refs(self) -> Generator[RefName, None, None]:
-        if self.public_name:
+        if self.public_name and self.public_name != self.ref:
             yield self.public_name
+        if self.ldebug_name and self.ldebug_name != self.ref:
+            yield self.ldebug_name
         if self.stgit_name:
             yield self.stgit_name
 
@@ -374,13 +439,18 @@ class Branch(GenericBranch):
     ):
         super().__init__(gc.cfg, ref)
         self.gc = gc
+        self.fullref = ref
 
     def __repr__(self):
-        return 'Branch({})'.format(self.ref)
+        return 'Branch({})'.format(self.fullref)
 
     @functools.cached_property
     def generic(self) -> GenericBranch:
         return GenericBranch(self.gc.cfg, self.ref)
+
+    @property
+    def sha(self) -> str:
+        return self.fullref.sha
 
     @functools.cached_property
     def patches(self) -> List[PatchInfo]:
@@ -415,6 +485,13 @@ class Branch(GenericBranch):
         return self.gc.refs.get(ref_name.name, None)
 
     @functools.cached_property
+    def ldebug(self) -> Optional[Ref]:
+        ref_name = self.ldebug_name
+        if not ref_name:
+            return None
+        return self.gc.refs.get(ref_name.name, None)
+
+    @functools.cached_property
     def stgit(self) -> Optional[Ref]:
         ref_name = self.stgit_name
         if not ref_name:
@@ -422,8 +499,8 @@ class Branch(GenericBranch):
         return self.gc.refs.get(ref_name.name, None)
 
     @functools.cached_property
-    def remote(self) -> Optional[Ref]:
-        ref_name = self.remote_name
+    def review(self) -> Optional[Ref]:
+        ref_name = self.review_name
         if not ref_name:
             return None
         return self.gc.refs.get(ref_name.name, None)
@@ -479,19 +556,71 @@ class Branch(GenericBranch):
             return
         command.run(['git', 'config', '--local', self.gc.cfg.branch(self.name).jf.hidden.key, str(value).lower()], check=True)
 
-    def publish_local(self, msg: str = None, force_new=False):
+    @functools.cached_property
+    def description(self) -> Optional[str]:
+        return self.gc.cfg.branch(self.name).description.value
+
+    def publish_local_public(self, msg: str = None, force_new=False) -> Tuple[Optional[str], Optional[str]]:
+        if not self.public_branch_name:
+            raise Error(f'No public branch for branch {self.name}')
         if self.name == self.public_branch_name:
-            return
-        if self.stgit:
-            if force_new:
-                command.run(['stg', 'branch', '--delete', '--force', self.public_branch_name])
-            cmd = ['stg', 'publish']
-            if msg:
-                cmd.append(f'--message={msg}')
-            cmd.append(self.public_branch_name)
-            command.run(cmd)
-            return
-        raise NotImplementedError('Not implemented for non-stgit branches')
+            return (
+                self.public_name.name if self.public_name else None,
+                self.review_name.name if self.review_name else None,
+            )
+        if not self.stgit:
+            raise NotImplementedError('Not implemented for non-stgit branches')
+        public_ref = self.public
+        if force_new and public_ref:
+            command.run(['stg', 'branch', '--delete', '--force', self.public_branch_name])
+            public_ref = None
+        if self.ldebug and (
+            not public_ref or self.gc.is_merged_into(public_ref.sha, self.ldebug.sha)
+        ):
+            command.run(['git', 'branch', '--force', '--no-track', self.public_branch_name, self.ldebug.name])
+
+        cmd = ['stg', 'publish']
+        if msg:
+            cmd.append(f'--message={msg}')
+        cmd.append(self.public_branch_name)
+        command.run(cmd)
+        return (
+            self.public_name.name if self.public_name else None,
+            self.review_name.name if self.review_name else None,
+        )
+
+    def publish_local_debug(self, msg: str = None, force_new=False) -> Tuple[Optional[str], Optional[str]]:
+        if not self.ldebug_branch_name:
+            raise Error(f'No local debug branch for branch {self.name}')
+        if self.name == self.ldebug_branch_name:
+            return (
+                self.ldebug_name.name if self.ldebug_name else None,
+                self.debug_name.name if self.debug_name else None,
+            )
+        if not self.stgit:
+            raise NotImplementedError('Not implemented for non-stgit branches')
+        debug_ref = self.ldebug
+        if force_new:
+            if debug_ref:
+                command.run(['stg', 'branch', '--delete', '--force', self.ldebug_branch_name])
+                debug_ref = None
+        elif self.public and (
+            not debug_ref or self.gc.is_merged_into(debug_ref.sha, self.public.sha)
+        ):
+            command.run(['git', 'branch', '--force', '--no-track', self.ldebug_branch_name, self.public.name])
+
+        cmd = ['stg', 'publish']
+        if msg:
+            cmd.append(f'--message={msg}')
+        cmd.append(self.ldebug_branch_name)
+        command.run(cmd)
+        return (
+            self.ldebug_name.name if self.ldebug_name else None,
+            self.debug_name.name if self.debug_name else None,
+        )
+
+    def publish_local(self, msg: str = None, force_new=False) -> Tuple[Optional[str], Optional[str]]:
+        return self.publish_local_public(msg, force_new)
 
 
 _TAG_P = 'tag: '
@@ -509,6 +638,10 @@ class Cache(object):
             if k in _cache_properties:
                 continue
             delattr(self, k)
+
+    @property
+    def remote(self) -> str:
+        return self.cfg.jf.remote.value or _REMOTE_ORIGIN
 
     @functools.cached_property
     def refs_list(self):
@@ -694,7 +827,7 @@ current_ref = _get_current_ref()
 def _get_current_branch() -> Optional[str]:
     if not current_ref:
         return None
-    return Ref(current_ref, None).branch_name
+    return RefName(current_ref).branch_name
 
 
 current_branch = _get_current_branch()

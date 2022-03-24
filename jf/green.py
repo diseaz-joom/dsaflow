@@ -27,7 +27,7 @@ class Error(Exception):
 class Mixin(jenkins.Mixin):
     def green_all(self, gc: git.Cache) -> None:
         for branch_name in gc.cfg.jf.default_green.as_list:
-            self.green(gc, branch_name)
+            self.green(gc, gc.branches[branch_name])
 
     def green(self, gc: git.Cache, branch: git.Branch) -> None:
         green_branch_name = branch.tested_branch_name
