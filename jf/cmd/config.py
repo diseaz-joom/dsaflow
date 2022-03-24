@@ -46,7 +46,7 @@ class Config(app.Command):
         gc = git.Cache()
         b = gc.branches[self.flags.branch]
         if self.flags.set:
-            k = getattr(gc.cfg.branch(b.name).jf(), self.flags.set)()
+            k = getattr(gc.cfg.branch(b.name).jf, self.flags.set)
             if self.flags.value is None:
                 k.unset()
             else:
@@ -54,25 +54,22 @@ class Config(app.Command):
         else:
             bk = gc.cfg.branch(b.name)
             for k in ['remote', 'merge']:
-                kk = getattr(bk, k)()
-                kv = kk.get()
-                if kv is None:
+                kk = getattr(bk, k)
+                if kk.value is None:
                     continue
-                print(f'{kk.key()} {kv}')
-            bk = gc.cfg.branch(b.name).stgit()
+                print(f'{kk.key} {kk.value}')
+            bk = gc.cfg.branch(b.name).stgit
             for k in ['version', 'parentbranch']:
-                kk = getattr(bk, k)()
-                kv = kk.get()
-                if kv is None:
+                kk = getattr(bk, k)
+                if kk.value is None:
                     continue
-                print(f'{kk.key()} {kv}')
-            bk = gc.cfg.branch(b.name).jf()
+                print(f'{kk.key} {kk.value}')
+            bk = gc.cfg.branch(b.name).jf
             for k in _jflow_keys:
-                kk = getattr(bk, k)()
-                kv = kk.get()
-                if kv is None:
+                kk = getattr(bk, k)
+                if kk.value is None:
                     continue
-                print(f'{kk.key()} {kv}')
+                print(f'{kk.key} {kk.value}')
 
 
 class Info(app.Command):
@@ -93,50 +90,14 @@ class Info(app.Command):
         gc = git.Cache()
         b = gc.branches[self.flags.branch]
         print('Branch:')
-        for k in ['name', 'is_jflow', 'is_stgit', 'public', 'debug', 'remote', 'fork', 'upstream', 'hidden', 'tested']:
+        for k in ['name', 'is_jflow', 'is_stgit', 'upstream_name', 'upstream', 'fork_name', 'fork', 'public_name', 'public', 'debug_name', 'debug', 'remote_name', 'remote', 'hidden', 'tested']:
             kv = getattr(b, k)
             print(f'  {k}: {kv!r}')
-        print('Config:')
-        bk = gc.cfg.branch(b.name).jf()
+        bk = gc.cfg.branch(b.name).jf
+        print(f'Jflow config ({bk.key}):')
         for k in _jflow_keys:
-            kv = getattr(bk, k)().get()
+            kv = getattr(bk, k).value
             print(f'  {k}: {kv!r}')
-
-
-class Hide(app.Command):
-    name='hide'
-
-    @classmethod
-    def add_arguments(cls, parser):
-        super().add_arguments(parser)
-
-        parser.add_argument(
-            '--set',
-            action='store',
-            type=strconv.parse_bool,
-            dest='hide',
-            default=True,
-            help='Hide branch',
-        )
-
-        parser.add_argument(
-            'branch',
-            nargs='?',
-            default=git.current_branch,
-            help='Branch to operate on',
-        )
-
-    def main(self):
-        if not self.flags.branch:
-            raise Error('Branch is required')
-
-        gc = git.Cache()
-
-        branch = gc.branch_by_abbrev.get(self.flags.branch, None)
-        if not branch:
-            raise Error(f'Branch not found: {self.flags.branch}')
-
-        branch.set_hidden(self.flags.hide)
 
 
 @app.main(name='current-ref')

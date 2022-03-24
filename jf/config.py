@@ -21,41 +21,27 @@ SEPARATOR = '.'
 class V1(object):
     VERSION=1
 
+    @functools.lru_cache(maxsize=None)
     def branch(self, name: str) -> 'BranchKey':
-        return BranchKey.make(self, ['branch', name])
-
-    def jf_branch(self, name: str) -> 'JfBranchKey':
-        return self.branch(name).jf()
-
-    def stgit_branch(self, name: str) -> 'StgitBranchKey':
-        return self.branch(name).stgit()
-
-    def jf(self) -> 'JfKey':
-        return JfKey.make(self, ['jflow'])
-
-    # @functools.cached_property
-    # def config(self) -> Dict[str, str]:
-    #     return dict(gen_config())
+        return BranchKey(cfg=self, parts=['branch', name])
 
     @functools.cached_property
-    def config(self) -> Dict[str, Union[str, List[str]]]:
+    def jf(self) -> 'JfKey':
+        return JfKey(cfg=self, parts=['jflow'])
+
+    @functools.cached_property
+    def config(self) -> Dict[str, List[str]]:
         raw_config: Dict[str, List[str]] = collections.defaultdict(list)
         for name, value in gen_config():
             raw_config[name].append(value)
-        result: Dict[str, Union[str, List[str]]] = {}
-        for name, values in raw_config.items():
-            if len(values) == 1:
-                result[name] = values[0]
-                continue
-            result[name] = values
-        return result
+        return dict(raw_config)
 
 
 KeyT = TypeVar('KeyT', bound='Key')
 
 class Key(object):
-    def __init__(self, k: 'Key' = None, *, config: 'V1' = None, parts: List[str] = None):
-        self.config: V1 = config or (k.config if k else V1())
+    def __init__(self, cfg: 'V1' = None, parts: List[str] = None):
+        self.cfg: V1 = cfg or V1()
         self.parts: List[str] = parts or []
         if not parts and k:
             self.parts = k.parts
@@ -66,88 +52,114 @@ class Key(object):
         )
 
     @classmethod
-    def make(cls: Type[KeyT], config: 'V1', parts: List[str]) -> KeyT:
-        return cls(config=config, parts=parts)
-
-    @classmethod
-    def join(cls: Type[KeyT], k1: 'Key', k2: 'Key') -> KeyT:
-        return cls(k1, parts=k1.parts + k2.parts)
+    def copy(cls: Type[KeyT], k: 'Key') -> KeyT:
+        return cls(cfg=k.cfg, parts=list(k.parts))
 
     @classmethod
     def append(cls: Type[KeyT], k: 'Key', *parts: str) -> KeyT:
-        return cls(k, parts=k.parts + list(parts))
+        p = list(k.parts)
+        p.extend(parts)
+        return cls(cfg=k.cfg, parts=p)
 
+    @functools.cached_property
     def key(self) -> str:
         return SEPARATOR.join(self.parts)
 
     def get(self, default: str = None) -> Optional[str]:
-        v = self.config.config.get(self.key(), default)
-        if isinstance(v, list):
-            return v[0]
-        return v
+        v = self.cfg.config.get(self.key, None)
+        if not v:
+            return default
+        return v[0]
+
+    @functools.cached_property
+    def value(self) -> Optional[str]:
+        return self.get()
+
+    @functools.cached_property
+    def as_int(self) -> Optional[int]:
+        return self.get_int()
+
+    @functools.cached_property
+    def as_bool(self) -> bool:
+        return self.get_bool()
+
+    @functools.cached_property
+    def as_list(self) -> List[str]:
+        return self.get_list()
 
     def get_bool(self, default: bool = False) -> bool:
-        v = self.get()
-        if v is None:
+        if self.value is None:
             return default
-        return strconv.parse_bool(v, default)
+        return strconv.parse_bool(self.value, default)
 
     def get_int(self, default: int = None) -> Optional[int]:
-        v = self.get()
-        if v is None:
+        if self.value is None:
             return default
-        return int(v)
+        return int(self.value)
 
     def get_list(self, default: List[str] = None) -> List[str]:
-        v = self.config.config.get(self.key(), default)
-        if isinstance(v, list):
-            return v
-        elif v:
-            return [v]
-        return []
+        v = self.config.config.get(self.key(), None)
+        return v or default or []
 
     def set(self, value: str) -> None:
-        command.run(['git', 'config', '--local', self.key(), value])
+        command.run(['git', 'config', '--local', self.key, value])
+
+    def set_list(self, value: List[str]) -> None:
+        op = '--replace-all'
+        for v in value:
+            command.run(['git', 'config', '--local', op, self.key, v])
+            op = '--add'
 
     def unset(self) -> None:
-        command.run(['git', 'config', '--unset', self.key()])
+        command.run(['git', 'config', '--local', '--unset-all', self.key])
 
 
 class BranchKey(Key):
+    @functools.cached_property
     def jf(self) -> 'JfBranchKey':
         return JfBranchKey.append(self, 'jflow')
 
+    @functools.cached_property
     def stgit(self) -> 'StgitBranchKey':
         return StgitBranchKey.append(self, 'stgit')
 
+    @functools.cached_property
     def remote(self) -> Key:
         return Key.append(self, 'remote')
 
+    @functools.cached_property
     def merge(self) -> Key:
         return Key.append(self, 'merge')
 
 
 class JfBranchKey(Key):
+    @functools.cached_property
     def version(self) -> Key:
         return Key.append(self, 'version')
 
+    @functools.cached_property
     def public(self) -> Key:
         return Key.append(self, 'public')
 
+    @functools.cached_property
     def debug(self) -> Key:
         return Key.append(self, 'debug')
 
+    @functools.cached_property
     def upstream(self) -> Key:
         return Key.append(self, 'upstream')
 
+    @functools.cached_property
     def fork(self) -> Key:
         return Key.append(self, 'fork')
 
+    @functools.cached_property
     def remote(self) -> Key:
         return Key.append(self, 'remote')
 
     # Properties below are not only for jflow-controlled branches
 
+    @functools.cached_property
     def hidden(self) -> Key:
         '''Exclude branch from all operations.
 
@@ -156,29 +168,37 @@ class JfBranchKey(Key):
         '''
         return Key.append(self, 'hidden')
 
+    @functools.cached_property
     def tested(self) -> Key:
         '''Name of the "tested" branch.'''
         return Key.append(self, 'tested')
 
+    @functools.cached_property
     def sync(self) -> Key:
         '''Update branch from upstream on sync.'''
         return Key.append(self, 'sync')
 
+
 class StgitBranchKey(Key):
+    @functools.cached_property
     def version(self) -> Key:
         return Key.append(self, 'stackformatversion')
 
+    @functools.cached_property
     def parentbranch(self) -> Key:
         return Key.append(self, 'parentbranch')
 
 
 class JfKey(Key):
+    @functools.cached_property
     def template(self) -> Key:
         return JfTemplateKey.append(self, 'template')
 
+    @functools.cached_property
     def default_green(self) -> Key:
         return Key.append(self, 'default-green')
 
+    @functools.cached_property
     def origin(self) -> Key:
         return Key.append(self, 'origin')
 

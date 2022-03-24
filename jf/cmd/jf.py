@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-import jf.cmd.branch
 import jf.cmd.commits
+import jf.cmd.config
 import jf.cmd.list
 import jf.cmd.rebase
 import jf.cmd.refs

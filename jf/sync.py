@@ -40,7 +40,7 @@ class Mixin(green.Mixin, app.Command):
 
             gc = git.Cache()
             for b in gc.branches.values():
-                if not gc.cfg.branch(b.name).jf().sync().get_bool():
+                if not gc.cfg.branch(b.name).jf.sync.as_bool:
                     continue
                 upstream = b.upstream
                 if not upstream:

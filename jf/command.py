@@ -25,11 +25,10 @@ def _options(parser: argparse.ArgumentParser) -> None:
         action='store_false',
         dest='full_run',
         default=FULL_RUN,
-        help=('Do not make any changes.'
-              ' Commands to be executed will be logged.'),
+        help='Do not make any changes.',
     )
     parser.add_argument(
-        '-f', '--force',
+        '-f', '--full-run',
         action='store_true',
         dest='full_run',
         default=FULL_RUN,

@@ -251,7 +251,7 @@ class GenericBranch:
 
     @functools.cached_property
     def jflow_version(self) -> Optional[int]:
-        return self.cfg.branch(self.name).jf().version().get_int()
+        return self.cfg.branch(self.name).jf.version.as_int
 
     @property
     def is_stgit(self) -> bool:
@@ -259,7 +259,7 @@ class GenericBranch:
 
     @functools.cached_property
     def stgit_version(self) -> Optional[int]:
-        return self.cfg.branch(self.name).stgit().version().get_int()
+        return self.cfg.branch(self.name).stgit.version.as_int
 
     @functools.cached_property
     def stgit_name(self) -> Optional[RefName]:
@@ -272,7 +272,7 @@ class GenericBranch:
         if self.jflow_version is None:
             return None
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf().public().get()
+            return self.cfg.branch(self.name).jf.public.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -287,7 +287,7 @@ class GenericBranch:
         if self.jflow_version is None:
             return None
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf().debug().get()
+            return self.cfg.branch(self.name).jf.debug.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -302,7 +302,7 @@ class GenericBranch:
         if self.jflow_version is None:
             return self.name
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf().remote().get()
+            return self.cfg.branch(self.name).jf.remote.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -315,15 +315,15 @@ class GenericBranch:
     @functools.cached_property
     def upstream_branch_name(self) -> Optional[str]:
         if self.jflow_version is None:
-            remote = self.cfg.branch(self.name).remote().get()
+            remote = self.cfg.branch(self.name).remote.value
             if remote != _REMOTE_LOCAL:
                 return None
-            merge = self.cfg.branch(self.name).merge().get()
+            merge = self.cfg.branch(self.name).merge.value
             if merge:
                 return RefName(merge).branch_name
             return None
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf().upstream().get()
+            return self.cfg.branch(self.name).jf.upstream.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -338,7 +338,7 @@ class GenericBranch:
         if self.jflow_version is None:
             return self.upstream_branch_name
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf().fork().get()
+            return self.cfg.branch(self.name).jf.fork.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -350,7 +350,7 @@ class GenericBranch:
 
     @functools.cached_property
     def tested_branch_name(self) -> Optional[str]:
-        return self.cfg.branch(self.name).jf().tested().get()
+        return self.cfg.branch(self.name).jf.tested.value
 
     @functools.cached_property
     def tested_name(self) -> Optional[RefName]:
@@ -457,6 +457,13 @@ class Branch(GenericBranch):
         return self.gc.branch_by_ref.get(r.name, None)
 
     @functools.cached_property
+    def tested(self) -> Optional[Ref]:
+        ref_name = self.tested_name
+        if not ref_name:
+            return None
+        return self.gc.refs.get(ref_name.name, None)
+
+    @functools.cached_property
     def tested_branch(self) -> Optional['Branch']:
         r = self.tested_name
         if not r:
@@ -465,12 +472,12 @@ class Branch(GenericBranch):
 
     @functools.cached_property
     def hidden(self) -> bool:
-        return strconv.parse_bool(self.gc.cfg.branch(self.name).jf().hidden().get('no'))
+        return strconv.parse_bool(self.gc.cfg.branch(self.name).jf.hidden.value, False)
 
     def set_hidden(self, value: bool = True):
         if value == self.hidden:
             return
-        command.run(['git', 'config', '--local', self.gc.cfg.branch(self.name).jf().hidden().key(), str(value).lower()], check=True)
+        command.run(['git', 'config', '--local', self.gc.cfg.branch(self.name).jf.hidden.key, str(value).lower()], check=True)
 
     def publish_local(self, msg: str = None, force_new=False):
         if self.name == self.public_branch_name:
