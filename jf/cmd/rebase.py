@@ -12,7 +12,6 @@ from jf import command
 from jf import config
 from jf import git
 from jf import green
-from jf import sync
 
 
 _logger = logging.getLogger(__name__)
@@ -48,7 +47,7 @@ class Clean(CleanMixin, app.Command):
         self.clean()
 
 
-class Rebase(CleanMixin, sync.Mixin, app.Command):
+class Rebase(CleanMixin, app.Command):
     '''Rebase a branch.'''
     name='rebase'
 
@@ -72,16 +71,9 @@ class Rebase(CleanMixin, sync.Mixin, app.Command):
             metavar='BRANCH',
             help='Use this branch as `fork` parameter',
         )
-        parser.add_argument(
-            '--sync',
-            action='store_true',
-            help='Sync before rebase',
-        )
 
     def main(self):
         git.check_workdir_is_clean()
-        if self.flags.sync:
-            self.sync()
 
         gc = git.Cache()
 
@@ -116,9 +108,6 @@ class Rebase(CleanMixin, sync.Mixin, app.Command):
                 fork_ref = upstream_ref
         update_fork = fork_ref.name != branch.fork.name
         fork_branch = gc.branches[fork_ref.branch_name]
-
-        _logger.debug(f'Upstream: {upstream_ref.name!r} ({update_upstream})')
-        _logger.debug(f'Fork: {fork_ref.name!r} ({update_fork})')
 
         if not branch.is_jflow:
             raise NotImplementedError('Rebase for non-jflow branches is not implemented yet.')

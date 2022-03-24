@@ -114,13 +114,13 @@ class Publish(Review, app.Command):
             raise Error('No remote reference calculated')
         if not remote_ref.branch_name:
             raise Error(f'Failed to extract branch name from ref {remote_ref_name.name}')
-        remote_branch_ref_name = git.RefName.for_branch(git._REMOTE_LOCAL, remote_ref.branch_name)
+        remote_branch_ref = git.RefName.for_branch(git._REMOTE_LOCAL, remote_ref.branch_name)
 
         command.run([
             'git', 'push', '--force', remote_ref.remote,
             '{public}:{remote}'.format(
                 public=local_ref.name,
-                remote=remote_branch_ref_name,
+                remote=remote_branch_ref.name,
             )])
 
         if not self.flags.pr:

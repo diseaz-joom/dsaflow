@@ -39,7 +39,7 @@ class WorkdirIsNotCleanError(Error):
     '''Workdir is not clean.'''
 
     def __init__(self):
-        return super('Workdir is not clean.')
+        return super().__init__('Workdir is not clean.')
 
 
 class UnsupportedJflowVersionError(Error):
@@ -118,10 +118,10 @@ class RefName:
         self.name = name
 
     @staticmethod
-    def for_branch(remote: str, branch_name: str) -> str:
+    def for_branch(remote: str, branch_name: str) -> 'RefName':
         if remote == _REMOTE_LOCAL:
-            return HEAD_PREFIX + branch_name
-        return REMOTE_PREFIX + remote + '/' + branch_name
+            return RefName(HEAD_PREFIX + branch_name)
+        return RefName(REMOTE_PREFIX + remote + '/' + branch_name)
 
     def __repr__(self) -> str:
         return f'RefName({self.name!r})'
@@ -157,6 +157,10 @@ class RefName:
                 return Kind.patch_log
             return Kind.patch
         return Kind.unknown
+
+    @functools.cached_property
+    def is_remote(self) -> bool:
+        return self.kind == Kind.remote
 
     @functools.cached_property
     def remote(self) -> Optional[str]:
@@ -289,18 +293,18 @@ class GenericBranch:
 
     @property
     def is_jflow(self) -> bool:
-        return self.jflow_version is not None
+        return bool(self.jflow_version)
 
     @functools.cached_property
-    def jflow_version(self) -> Optional[int]:
+    def jflow_version(self) -> int:
         return self.cfg.branch(self.name).jf.version.as_int
 
     @property
     def is_stgit(self) -> bool:
-        return self.stgit_version is not None
+        return bool(self.stgit_version)
 
     @functools.cached_property
-    def stgit_version(self) -> Optional[int]:
+    def stgit_version(self) -> int:
         return self.cfg.branch(self.name).stgit.version.as_int
 
     @functools.cached_property
@@ -317,7 +321,7 @@ class GenericBranch:
 
     @functools.cached_property
     def public_branch_name(self) -> Optional[str]:
-        if self.jflow_version is None:
+        if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
             return self.cfg.branch(self.name).jf.public.value
@@ -327,12 +331,11 @@ class GenericBranch:
     def public_name(self) -> Optional[RefName]:
         if not self.public_branch_name:
             return None
-        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.public_branch_name)
-        return RefName(ref_name)
+        return RefName.for_branch(_REMOTE_LOCAL, self.public_branch_name)
 
     @functools.cached_property
     def debug_branch_name(self) -> Optional[str]:
-        if self.jflow_version is None:
+        if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
             return self.cfg.branch(self.name).jf.debug.value
@@ -342,12 +345,11 @@ class GenericBranch:
     def debug_name(self) -> Optional[RefName]:
         if not self.debug_branch_name:
             return None
-        ref_name = RefName.for_branch(self.remote, self.debug_branch_name)
-        return RefName(ref_name)
+        return RefName.for_branch(self.remote, self.debug_branch_name)
 
     @functools.cached_property
     def ldebug_branch_name(self) -> Optional[str]:
-        if self.jflow_version is None:
+        if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
             return self.cfg.branch(self.name).jf.ldebug.value
@@ -357,13 +359,13 @@ class GenericBranch:
     def ldebug_name(self) -> Optional[RefName]:
         if not self.ldebug_branch_name:
             return None
-        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.ldebug_branch_name)
-        return RefName(ref_name)
+        return RefName.for_branch(_REMOTE_LOCAL, self.ldebug_branch_name)
 
     @functools.cached_property
     def review_branch_name(self) -> Optional[str]:
-        if self.jflow_version is None:
-            return self.name
+        if not self.jflow_version:
+            return None
+            # return self.name
         elif self.jflow_version == 1:
             return self.cfg.branch(self.name).jf.review.value
         raise UnsupportedJflowVersionError(self.jflow_version)
@@ -372,44 +374,43 @@ class GenericBranch:
     def review_name(self) -> Optional[RefName]:
         if not self.review_branch_name:
             return None
-        ref_name = RefName.for_branch(self.remote, self.review_branch_name)
-        return RefName(ref_name)
+        return RefName.for_branch(self.remote, self.review_branch_name)
 
     @functools.cached_property
     def upstream_branch_name(self) -> Optional[str]:
-        if self.jflow_version is None:
-            remote = self.cfg.branch(self.name).remote.value
-            if remote != _REMOTE_LOCAL:
-                return None
-            merge = self.cfg.branch(self.name).merge.value
-            if merge:
-                return RefName(merge).branch_name
+        ref = self.upstream_name
+        if not ref:
             return None
-        elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf.upstream.value
-        raise UnsupportedJflowVersionError(self.jflow_version)
+        return ref.branch_name
 
     @functools.cached_property
     def upstream_name(self) -> Optional[RefName]:
-        if not self.upstream_branch_name:
+        if not self.jflow_version:
+            b = self.cfg.branch(self.name)
+            if b.merge.value:
+                return RefName.for_branch(b.remote.as_str, b.merge.as_str)
             return None
-        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.upstream_branch_name)
-        return RefName(ref_name)
-
-    @functools.cached_property
-    def fork_branch_name(self) -> Optional[str]:
-        if self.jflow_version is None:
-            return self.upstream_branch_name
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf.fork.value
+            return RefName.for_branch(_REMOTE_LOCAL, self.cfg.branch(self.name).jf.upstream.as_str)
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def fork_name(self) -> Optional[RefName]:
-        if not self.fork_branch_name:
+    def fork_branch_name(self) -> Optional[str]:
+        ref = self.fork_name
+        if not ref:
             return None
-        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.fork_branch_name)
-        return RefName(ref_name)
+        return ref.branch_name
+
+    @functools.cached_property
+    def fork_name(self) -> Optional[RefName]:
+        if not self.jflow_version:
+            return self.upstream_name
+        elif self.jflow_version == 1:
+            name = self.cfg.branch(self.name).jf.fork.as_str
+            if not name:
+                return self.upstream_name
+            return RefName.for_branch(_REMOTE_LOCAL, name)
+        raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
     def tested_branch_name(self) -> Optional[str]:
@@ -419,8 +420,19 @@ class GenericBranch:
     def tested_name(self) -> Optional[RefName]:
         if not self.tested_branch_name:
             return None
-        ref_name = RefName.for_branch(_REMOTE_LOCAL, self.tested_branch_name)
-        return RefName(ref_name)
+        return RefName.for_branch(_REMOTE_LOCAL, self.tested_branch_name)
+
+    @functools.cached_property
+    def sync(self) -> bool:
+        if not self.jflow_version:
+            if not self.cfg.jf.autosync.as_bool:
+                return False
+            if not (self.upstream_name and self.upstream_name.is_remote):
+                return False
+            return True
+        elif self.jflow_version == 1:
+            return self.cfg.branch(self.name).jf.sync.as_bool
+        raise UnsupportedJflowVersionError(self.jflow_version)
 
     def gen_related_refs(self) -> Generator[RefName, None, None]:
         if self.public_name and self.public_name != self.ref:
@@ -560,14 +572,11 @@ class Branch(GenericBranch):
     def description(self) -> Optional[str]:
         return self.gc.cfg.branch(self.name).description.value
 
-    def publish_local_public(self, msg: str = None, force_new=False) -> Tuple[Optional[str], Optional[str]]:
+    def publish_local_public(self, msg: str = None, force_new=False) -> Tuple[Optional[RefName], Optional[RefName]]:
         if not self.public_branch_name:
             raise Error(f'No public branch for branch {self.name}')
         if self.name == self.public_branch_name:
-            return (
-                self.public_name.name if self.public_name else None,
-                self.review_name.name if self.review_name else None,
-            )
+            return self.public_name, self.review_name
         if not self.stgit:
             raise NotImplementedError('Not implemented for non-stgit branches')
         public_ref = self.public
@@ -584,19 +593,13 @@ class Branch(GenericBranch):
             cmd.append(f'--message={msg}')
         cmd.append(self.public_branch_name)
         command.run(cmd)
-        return (
-            self.public_name.name if self.public_name else None,
-            self.review_name.name if self.review_name else None,
-        )
+        return self.public_name, self.review_name
 
-    def publish_local_debug(self, msg: str = None, force_new=False) -> Tuple[Optional[str], Optional[str]]:
+    def publish_local_debug(self, msg: str = None, force_new=False) -> Tuple[Optional[RefName], Optional[RefName]]:
         if not self.ldebug_branch_name:
             raise Error(f'No local debug branch for branch {self.name}')
         if self.name == self.ldebug_branch_name:
-            return (
-                self.ldebug_name.name if self.ldebug_name else None,
-                self.debug_name.name if self.debug_name else None,
-            )
+            return self.ldebug_name, self.debug_name
         if not self.stgit:
             raise NotImplementedError('Not implemented for non-stgit branches')
         debug_ref = self.ldebug
@@ -614,12 +617,9 @@ class Branch(GenericBranch):
             cmd.append(f'--message={msg}')
         cmd.append(self.ldebug_branch_name)
         command.run(cmd)
-        return (
-            self.ldebug_name.name if self.ldebug_name else None,
-            self.debug_name.name if self.debug_name else None,
-        )
+        return self.ldebug_name, self.debug_name
 
-    def publish_local(self, msg: str = None, force_new=False) -> Tuple[Optional[str], Optional[str]]:
+    def publish_local(self, msg: str = None, force_new=False) -> Tuple[Optional[RefName], Optional[RefName]]:
         return self.publish_local_public(msg, force_new)
 
 
@@ -746,8 +746,25 @@ class Cache(object):
     def branches(self) -> Dict[str, Branch]:
         return {b.name: b for b in self.branch_by_ref.values()}
 
+    @functools.lru_cache(maxsize=None)
+    def resolve_shortcut(self, shortcut: str) -> Optional[Ref]:
+        matches = []
+        prefix = shortcut + '/'
+        for r in self.refs_list:
+            if not r.branch_name:
+                continue
+            if r.branch_name == shortcut:
+                return r
+            if r.branch_name.startswith(prefix):
+                matches.append(r)
+        if not matches:
+            return None
+        return max(matches, key=lambda r: (r.branch_name, r.is_remote))
+
     @functools.cached_property
-    def current_ref(self):
+    def current_ref(self) -> Ref:
+        if not current_ref:
+            raise Error('Not in git repo')
         return self.refs.get(current_ref, Ref(current_ref, current_ref))
 
     def is_merged_into(self, parent_sha: Optional[str], child_sha: Optional[str]) -> bool:
