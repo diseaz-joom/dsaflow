@@ -87,7 +87,7 @@ class Info(app.Command):
         gc = git.Cache()
         b = gc.branches[self.flags.branch]
         print('Branch:')
-        for k in ['name', 'is_jflow', 'is_stgit', 'upstream_name', 'upstream', 'fork_name', 'fork', 'public_name', 'public', 'debug_name', 'debug', 'ldebug_name', 'ldebug', 'review_name', 'review', 'hidden', 'sync', 'tested']:
+        for k in ['name', 'remote', 'is_jflow', 'is_stgit', 'upstream_name', 'upstream', 'fork_name', 'fork', 'public_name', 'public', 'debug_branch_name', 'debug_name', 'debug', 'ldebug_name', 'ldebug', 'review_name', 'review', 'hidden', 'protected', 'sync', 'tested']:
             kv = getattr(b, k)
             print(f'  {k}: {kv!r}')
         bk = gc.cfg.branch(b.name).jf
