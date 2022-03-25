@@ -388,7 +388,7 @@ class GenericBranch:
         if not self.jflow_version:
             b = self.cfg.branch(self.name)
             if b.merge.value:
-                return RefName.for_branch(b.remote.as_str, b.merge.as_str)
+                return RefName.for_branch(b.remote.as_str, RefName(b.merge.as_str).branch_name)
             return None
         elif self.jflow_version == 1:
             return RefName.for_branch(_REMOTE_LOCAL, self.cfg.branch(self.name).jf.upstream.as_str)
@@ -425,6 +425,8 @@ class GenericBranch:
     @functools.cached_property
     def sync(self) -> bool:
         if not self.jflow_version:
+            if self.cfg.branch(self.name).jf.sync.as_bool:
+                return True
             if not self.cfg.jf.autosync.as_bool:
                 return False
             if not (self.upstream_name and self.upstream_name.is_remote):

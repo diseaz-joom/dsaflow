@@ -40,7 +40,7 @@ class Mixin(green.Mixin, app.Command):
 
             gc = git.Cache()
             for b in gc.branches.values():
-                if b.sync:
+                if not b.sync:
                     continue
                 upstream = b.upstream
                 if not upstream:
@@ -51,7 +51,7 @@ class Mixin(green.Mixin, app.Command):
                 b_commit = gc.commits[b_sha]
                 if gc.is_merged_into(upstream_sha, b_sha):
                     return
-                command.run(['git', 'branch', '--force', b.name, upstream.name])
+                command.run(['git', 'branch', '--force', '--no-track', b.name, upstream.name])
 
             if self.flags.with_green:
                 for b in gc.branches.values():
