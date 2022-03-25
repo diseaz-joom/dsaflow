@@ -65,23 +65,16 @@ class ListLine:
 
     @property
     def merged(self) -> str:
-        if not (self.b.upstream and self.is_merged_into(self.b.upstream)):
-            return '.'
-        if not (self.b.fork and self.is_merged_into(self.b.fork)):
-            return 'U'
-        if not self.is_merged_into(self.gc.refs['develop']):
-            return 'F'
-        if not self.is_merged_into(self.gc.refs['master']):
-            return 'D'
-        return 'M'
-
-    @property
-    def merged_master(self) -> str:
-        return 'M' if self.is_merged_into(self.gc.refs['master']) else '.'
-
-    @property
-    def merged_develop(self) -> str:
-        return 'D' if self.is_merged_into(self.gc.refs['develop']) else '.'
+        r = '.'
+        if self.b.upstream and self.is_merged_into(self.b.upstream):
+            r = 'U'
+        if self.b.fork and self.is_merged_into(self.b.fork):
+            r = 'F'
+        if 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs['develop']):
+            r = 'D'
+        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs['master']):
+            r = 'M'
+        return r
 
     @property
     def name_pad(self) -> str:
