@@ -8,14 +8,12 @@ from dsapy import app
 from dsapy.algs import strconv
 
 from jf import color
+from jf import config
 from jf import git
 
 
 class Error(Exception):
     '''Base for errors in the module.'''
-
-
-_jflow_keys = ['version', 'public', 'debug', 'ldebug', 'upstream', 'fork', 'review', 'hidden', 'tested', 'sync']
 
 
 class Config(app.Command):
@@ -64,12 +62,11 @@ class Config(app.Command):
                 if kk.value is None:
                     continue
                 print(f'{kk.key} {kk.value}')
-            bk = gc.cfg.branch(b.name).jf
-            for k in _jflow_keys:
-                kk = getattr(bk, k)
-                if kk.value is None:
+            bk = gc.cfg.branch(b.name).jf.key + config.SEPARATOR
+            for k, v in gc.cfg.config.items():
+                if not k.startswith(bk):
                     continue
-                print(f'{kk.key} {kk.value}')
+                print(f'{k} {v!r}')
 
 
 class Info(app.Command):
@@ -90,12 +87,12 @@ class Info(app.Command):
         gc = git.Cache()
         b = gc.branches[self.flags.branch]
         print('Branch:')
-        for k in ['name', 'is_jflow', 'is_stgit', 'upstream_name', 'upstream', 'fork_name', 'fork', 'public_name', 'public', 'debug_name', 'debug', 'ldebug_name', 'ldebug', 'review_name', 'review', 'hidden', 'tested']:
+        for k in ['name', 'is_jflow', 'is_stgit', 'upstream_name', 'upstream', 'fork_name', 'fork', 'public_name', 'public', 'debug_name', 'debug', 'ldebug_name', 'ldebug', 'review_name', 'review', 'hidden', 'sync', 'tested']:
             kv = getattr(b, k)
             print(f'  {k}: {kv!r}')
         bk = gc.cfg.branch(b.name).jf
         print(f'Jflow config ({bk.key}):')
-        for k in _jflow_keys:
+        for k in config.JfBranchKey.KEYS:
             kv = getattr(bk, k).value
             print(f'  {k}: {kv!r}')
 
@@ -106,3 +103,21 @@ def current_ref(**kwargs):
     if not git.current_ref:
         return
     print(git.current_ref)
+
+
+class Resolve(app.Command):
+    name = 'resolve'
+
+    @classmethod
+    def add_arguments(cls, parser):
+        super().add_arguments(parser)
+
+        parser.add_argument(
+            'shortcut',
+            help='Shortcut to resolve',
+        )
+
+    def main(self):
+        gc = git.Cache()
+        r = gc.resolve_shortcut(self.flags.shortcut)
+        print(f'Resolved: {r!r}')

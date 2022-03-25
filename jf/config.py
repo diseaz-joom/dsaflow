@@ -78,8 +78,12 @@ class Key(object):
         return self.get()
 
     @functools.cached_property
-    def as_int(self) -> Optional[int]:
-        return self.get_int()
+    def as_str(self) -> str:
+        return self.get() or ''
+
+    @functools.cached_property
+    def as_int(self) -> int:
+        return self.get_int() or 0
 
     @functools.cached_property
     def as_bool(self) -> bool:
@@ -139,6 +143,15 @@ class BranchKey(Key):
 
 
 class JfBranchKey(Key):
+    KEYS = [
+        'version',
+        'review', 'public',
+        'debug', 'ldebug',
+        'upstream', 'fork',
+        'hidden', 'tested', 'sync',
+        'debug_prefix', 'debug_suffix',
+    ]
+
     @functools.cached_property
     def version(self) -> Key:
         return Key.append(self, 'version')
@@ -166,6 +179,14 @@ class JfBranchKey(Key):
     @functools.cached_property
     def review(self) -> Key:
         return Key.append(self, 'remote')
+
+    @functools.cached_property
+    def debug_prefix(self) -> Key:
+        return Key.append(self, 'debug-prefix')
+
+    @functools.cached_property
+    def debug_suffix(self) -> Key:
+        return Key.append(self, 'debug-suffix')
 
     # Properties below are not only for jflow-controlled branches
 
@@ -201,8 +222,23 @@ class StgitBranchKey(Key):
 
 class JfKey(Key):
     @functools.cached_property
-    def template(self) -> Key:
-        return JfTemplateKey.append(self, 'template')
+    def templates_root(self) -> Key:
+        return Key.append(self, 'template')
+
+    @functools.lru_cache(maxsize=None)
+    def template(self, prefix) -> 'JfTemplateKey':
+        return JfTemplateKey.append(self.templates_root, prefix)
+
+    @functools.cached_property
+    def templates_list(self) -> List[str]:
+        prefix = self.templates_root.key + '.'
+        suffix = '.version'
+        templates = []
+        for key_name in self.cfg.config.keys():
+            if not (key_name.startswith(prefix) and key_name.endswith(suffix)):
+                continue
+            templates.append(key_name[len(prefix):-len(suffix)])
+        return templates
 
     @functools.cached_property
     def default_green(self) -> Key:
@@ -212,6 +248,10 @@ class JfKey(Key):
     def remote(self) -> Key:
         return Key.append(self, 'remote')
 
+    @functools.cached_property
+    def autosync(self) -> Key:
+        return Key.append(self, 'autosync')
+
 
 class RemoteKey(Key):
     @functools.cached_property
@@ -220,7 +260,125 @@ class RemoteKey(Key):
 
 
 class JfTemplateKey(Key):
-    pass
+    KEYS = [
+        'version', 'upstream', 'fork',
+        'lreview_prefix', 'lreview_suffix',
+        'review_prefix', 'review_suffix',
+        'ldebug_prefix', 'ldebug_suffix',
+        'debug_prefix', 'debug_suffix',
+    ]
+
+    @functools.cached_property
+    def version(self) -> Key:
+        return Key.append(self, 'version')
+
+    @functools.cached_property
+    def upstream(self) -> Key:
+        return Key.append(self, 'upstream')
+
+    @functools.cached_property
+    def fork(self) -> Key:
+        return Key.append(self, 'fork')
+
+    @functools.cached_property
+    def lreview_prefix(self) -> Key:
+        return Key.append(self, 'public-prefix')
+
+    @functools.cached_property
+    def lreview_suffix(self) -> Key:
+        return Key.append(self, 'public-suffix')
+
+    @functools.cached_property
+    def review_prefix(self) -> Key:
+        return Key.append(self, 'remote-prefix')
+
+    @functools.cached_property
+    def review_suffix(self) -> Key:
+        return Key.append(self, 'remote-suffix')
+
+    @functools.cached_property
+    def ldebug_prefix(self) -> Key:
+        return Key.append(self, 'ldebug-prefix')
+
+    @functools.cached_property
+    def ldebug_suffix(self) -> Key:
+        return Key.append(self, 'ldebug-suffix')
+
+    @functools.cached_property
+    def debug_prefix(self) -> Key:
+        return Key.append(self, 'debug-prefix')
+
+    @functools.cached_property
+    def debug_suffix(self) -> Key:
+        return Key.append(self, 'debug-suffix')
+
+
+class Jf2BranchKey(Key):
+    KEYS = [
+        'version',
+        'review', 'public',
+        'debug', 'ldebug',
+        'upstream', 'fork',
+        'hidden', 'tested', 'sync',
+        'debug_prefix', 'debug_suffix',
+    ]
+
+    @functools.cached_property
+    def version(self) -> Key:
+        return Key.append(self, 'version')
+
+    @functools.cached_property
+    def public(self) -> Key:
+        return Key.append(self, 'public')
+
+    @functools.cached_property
+    def debug(self) -> Key:
+        return Key.append(self, 'debug')
+
+    @functools.cached_property
+    def ldebug(self) -> Key:
+        return Key.append(self, 'ldebug')
+
+    @functools.cached_property
+    def upstream(self) -> Key:
+        return Key.append(self, 'upstream')
+
+    @functools.cached_property
+    def fork(self) -> Key:
+        return Key.append(self, 'fork')
+
+    @functools.cached_property
+    def review(self) -> Key:
+        return Key.append(self, 'remote')
+
+    @functools.cached_property
+    def debug_prefix(self) -> Key:
+        return Key.append(self, 'debug-prefix')
+
+    @functools.cached_property
+    def debug_suffix(self) -> Key:
+        return Key.append(self, 'debug-suffix')
+
+    # Properties below are not only for jflow-controlled branches
+
+    @functools.cached_property
+    def hidden(self) -> Key:
+        '''Exclude branch from all operations.
+
+        Hidden branch will not be displayed in lists, will be excluded from
+        massive operations.
+        '''
+        return Key.append(self, 'hidden')
+
+    @functools.cached_property
+    def tested(self) -> Key:
+        '''Name of the "tested" branch.'''
+        return Key.append(self, 'tested')
+
+    @functools.cached_property
+    def sync(self) -> Key:
+        '''Update branch from upstream on sync.'''
+        return Key.append(self, 'sync')
 
 
 def gen_config() -> Generator[Tuple[str, str], None, None]:
