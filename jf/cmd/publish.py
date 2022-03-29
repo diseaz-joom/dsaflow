@@ -7,6 +7,7 @@ from typing import *
 
 import logging
 import re
+import urllib.parse
 
 from dsapy import app
 
@@ -26,18 +27,39 @@ class Error(Exception):
 
 class Review:
     GITHUB_REMOTE_RE = re.compile('(?:https://|[-_+a-z0-9]+@)?github\\.com[:/](?P<repo>.*?)(?:\.git)?$')
+    FIX_RE = re.compile('\[fix:(?P<issue>[^\x5D]+)\]', re.I)
 
-    def github_review_url(self, remote_url: str, feature: git.RefName, upstream: git.RefName) -> Optional[str]:
+    def github_review_url(self, remote_url: str, branch: git.GenericBranch, feature: git.RefName, upstream: git.RefName) -> Optional[str]:
         github_m = self.GITHUB_REMOTE_RE.match(remote_url)
         if not github_m:
             return None
 
-        repo_name = github_m['repo']
+        title = ''
+        body = ''
 
-        return f'https://github.com/{repo_name}/compare/{upstream.branch_name}...{feature.branch_name}'
+        issues: List[str] = []
+
+        def extract_issue(m):
+            issues.append(m.group('issue'))
+            return ''
+
+        if branch.description:
+            title = self.FIX_RE.sub(extract_issue, branch.description).strip()
+
+        if issues:
+            body = body + '\n'.join(f'Fixes {issue}' for issue in issues)
+
+        params = {
+            'quick_pull': 1,
+            'title': title,
+            'body': body,
+        }
+        params = urllib.parse.urlencode({k:v for k, v in params.items() if v})
+
+        return f'https://github.com/{github_m["repo"]}/compare/{upstream.branch_name}...{feature.branch_name}?{params}'
 
 
-    def review_url(self, gc: git.Cache, feature: git.RefName, upstream: git.RefName) -> Optional[str]:
+    def review_url(self, gc: git.Cache, branch: git.GenericBranch, feature: git.RefName, upstream: git.RefName) -> Optional[str]:
         if not feature.remote:
             return None
 
@@ -45,7 +67,7 @@ class Review:
         if not remote_url:
             return None
 
-        return self.github_review_url(remote_url, feature, upstream)
+        return self.github_review_url(remote_url, branch, feature, upstream)
 
 
 class Publish(Review, app.Command):
@@ -126,5 +148,5 @@ class Publish(Review, app.Command):
         if not self.flags.pr:
             return
 
-        pr_url = self.review_url(gc, remote_ref, branch.upstream_name)
+        pr_url = self.review_url(gc, branch, remote_ref, branch.upstream_name)
         command.run(['xdg-open', pr_url])
