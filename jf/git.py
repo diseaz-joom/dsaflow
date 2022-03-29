@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-from typing import *
+from typing import List, Dict, Optional, TypeVar, Generator, Tuple
 
 import collections
 import contextlib
@@ -10,11 +10,7 @@ import functools
 import logging
 import subprocess
 
-from dsapy import app
-from dsapy import flag
-from dsapy import logs
 from dsapy.algs import bdfs
-from dsapy.algs import strconv
 
 from jf import command
 from jf import config
@@ -99,7 +95,7 @@ class Commit(object):
         self.refs: List[str] = refs or []
 
     def __repr__(self) -> str:
-        args=['sha={s.sha!r}'.format(s=self)]
+        args = ['sha={s.sha!r}'.format(s=self)]
         if self.parents:
             args.append('parents={s.parents!r}'.format(s=self))
         if self.children:
@@ -404,7 +400,7 @@ class GenericBranch:
         if not self.jflow_version:
             b = self.cfg.branch(self.name)
             if b.merge.value:
-                return RefName.for_branch(b.remote.as_str, RefName(b.merge.as_str).branch_name)
+                return RefName.for_branch(b.remote.as_str, RefName(b.merge.as_str).branch_name or '')
             return None
         elif self.jflow_version == 1:
             return RefName.for_branch(_REMOTE_LOCAL, self.cfg.branch(self.name).jf.upstream.as_str)
@@ -711,7 +707,11 @@ class Cache(object):
                     if rr.startswith(_TAG_P):
                         rr = TAG_PREFIX + r[len(_TAG_P):]
                     if rr not in self.refs:
-                        _logger.debug('Missing reference: {!r} <- {!r}\n  line: {!r}\n  value:  {!r}\n  at {!r}'.format(rr, r, line, value, commit))
+                        _logger.debug(
+                            (f'Missing reference: {rr!r} <- {r!r}\n'
+                             '  line: {line!r}\n'
+                             '  value:  {value!r}\n'
+                             '  at {commit!r}'))
                     else:
                         refs.append(self.refs[rr].name)
                 if not commit:
@@ -774,8 +774,10 @@ class Cache(object):
 
     def is_merged_into(self, parent_sha: Optional[str], child_sha: Optional[str]) -> bool:
         start = [parent_sha]
+
         def exits(c):
             return self.commits[c].children if c else []
+
         for commit_sha in bdfs.dfs(start, exits):
             if commit_sha == child_sha:
                 return True
@@ -793,6 +795,7 @@ def check_workdir_is_clean():
 
 
 _DEREFERENCE_SUFFIX = '^{}'
+
 
 def gen_refs():
     '''Generates all refs in repo.'''

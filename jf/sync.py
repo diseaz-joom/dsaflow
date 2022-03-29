@@ -4,12 +4,10 @@
 """Sync from remote."""
 
 import logging
-import re
 
 from dsapy import app
 
 from jf import command
-from jf import config
 from jf import git
 from jf import green
 
@@ -45,11 +43,7 @@ class Mixin(green.Mixin, app.Command):
                 upstream = b.upstream
                 if not upstream:
                     continue
-                upstream_sha = upstream.sha
-                b_ref = b.ref
-                b_sha = b_ref.sha
-                b_commit = gc.commits[b_sha]
-                if gc.is_merged_into(upstream_sha, b_sha):
+                if gc.is_merged_into(upstream.sha, b.ref.sha):
                     return
                 command.run(['git', 'branch', '--force', '--no-track', b.name, upstream.name])
 

@@ -1,11 +1,10 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-import itertools
 import logging
 import unittest
 
-from jflow import common
+from jf import common
 
 
 _logger = logging.getLogger(__name__)

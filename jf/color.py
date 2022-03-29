@@ -28,4 +28,4 @@ _colors_dict = {
 }
 
 Colors = common.Struct(_colors_dict)
-NoColors = common.Struct({c:'' for c in _colors_dict.keys()})
+NoColors = common.Struct({c: '' for c in _colors_dict.keys()})

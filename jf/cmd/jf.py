@@ -15,6 +15,20 @@ import jf.cmd.sync
 from dsapy import app
 
 
+(
+    jf.cmd.commits
+    and jf.cmd.config
+    and jf.cmd.delete
+    and jf.cmd.jenkins
+    and jf.cmd.list
+    and jf.cmd.publish
+    and jf.cmd.rebase
+    and jf.cmd.refs
+    and jf.cmd.start
+    and jf.cmd.sync
+)
+
+
 def run():
     app.start()
 

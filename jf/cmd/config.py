@@ -1,13 +1,8 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-import functools
-import sys
-
 from dsapy import app
-from dsapy.algs import strconv
 
-from jf import color
 from jf import config
 from jf import git
 
@@ -72,6 +67,29 @@ class Config(app.Command):
 class Info(app.Command):
     name = 'info'
 
+    _BRANCH_PROPS = [
+        'name',
+        'remote',
+        'is_jflow',
+        'is_stgit',
+        'upstream_name',
+        'upstream',
+        'fork_name',
+        'fork',
+        'ldebug_name',
+        'ldebug',
+        'debug_name',
+        'debug',
+        'public_name',
+        'public',
+        'review_name',
+        'review',
+        'hidden',
+        'protected',
+        'sync',
+        'tested',
+    ]
+
     @classmethod
     def add_arguments(cls, parser):
         super().add_arguments(parser)
@@ -87,7 +105,7 @@ class Info(app.Command):
         gc = git.Cache()
         b = gc.branches[self.flags.branch]
         print('Branch:')
-        for k in ['name', 'remote', 'is_jflow', 'is_stgit', 'upstream_name', 'upstream', 'fork_name', 'fork', 'public_name', 'public', 'debug_branch_name', 'debug_name', 'debug', 'ldebug_name', 'ldebug', 'review_name', 'review', 'hidden', 'protected', 'sync', 'tested']:
+        for k in self._BRANCH_PROPS:
             kv = getattr(b, k)
             print(f'  {k}: {kv!r}')
         bk = gc.cfg.branch(b.name).jf
