@@ -23,6 +23,7 @@ setuptools.setup(
     ],
     install_requires=[
         "diseaz-dsapy @ git+https://github.com/diseaz/dsapy.git",
+        "requests",
     ],
     entry_points={
         "console_scripts": [
