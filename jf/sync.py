@@ -19,7 +19,7 @@ class Error(Exception):
     '''Base class for errors in the module.'''
 
 
-class Mixin(green.Mixin, app.Command):
+class Mixin(green.Mixin):
     @classmethod
     def add_arguments(cls, parser):
         super().add_arguments(parser)
