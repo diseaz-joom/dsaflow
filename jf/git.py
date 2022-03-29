@@ -352,7 +352,7 @@ class GenericBranch:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf.ldebug.value
+            return self.cfg.branch(self.name).jf.ldebug.value or self.debug_branch_name
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
