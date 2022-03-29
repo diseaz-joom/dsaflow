@@ -4,14 +4,11 @@
 """Rebase branch to a fresh tip."""
 
 import logging
-import re
 
 from dsapy import app
 
 from jf import command
-from jf import config
 from jf import git
-from jf import green
 
 
 _logger = logging.getLogger(__name__)
@@ -33,7 +30,7 @@ class UnsupportedJflowVersionError(Error):
 
 
 class CleanMixin:
-    def clean(self):
+    def clean(self) -> None:
         command.run_pipe([
             ['git', 'ls-files', '--others', '--directory', '--exclude-standard'],
             ['xargs', 'rm', '--recursive', '--force', '--verbose'],
@@ -41,15 +38,15 @@ class CleanMixin:
 
 
 class Clean(CleanMixin, app.Command):
-    name='clean'
+    name = 'clean'
 
-    def main(self):
+    def main(self) -> None:
         self.clean()
 
 
 class Rebase(CleanMixin, app.Command):
     '''Rebase a branch.'''
-    name='rebase'
+    name = 'rebase'
 
     @classmethod
     def add_arguments(cls, parser):
@@ -72,7 +69,7 @@ class Rebase(CleanMixin, app.Command):
             help='Use this branch as `fork` parameter',
         )
 
-    def main(self):
+    def main(self) -> None:
         git.check_workdir_is_clean()
 
         gc = git.Cache()
@@ -81,6 +78,8 @@ class Rebase(CleanMixin, app.Command):
         if not branch_name:
             raise Error('HEAD is not a branch')
         branch = gc.branches[branch_name]
+        if not branch.upstream:
+            raise Error('No upstream found')
 
         need_publish = bool(branch.public)
         if need_publish:
@@ -92,22 +91,22 @@ class Rebase(CleanMixin, app.Command):
             if upstream_ref.kind != git.Kind.head:
                 raise Error(f'Not a local branch: {upstream_ref.name!r}')
         update_upstream = upstream_ref.name != branch.upstream.name
+        if not upstream_ref.branch_name:
+            raise Error(f'Upstream ref {upstream_ref!r} is not a branch')
         upstream_branch = gc.branches[upstream_ref.branch_name]
 
         fork_ref = branch.fork
+        update_fork = False
         if self.flags.fork:
             fork_ref = gc.get_ref(self.flags.fork)
             if fork_ref.kind != git.Kind.head:
                 raise Error(f'Not a local branch: {fork_ref.name!r}')
+            update_fork = True
         elif update_upstream:
-            upstream_branch = gc.branch_by_ref[upstream_ref.name]
-            tested_branch = upstream_branch.tested_branch
-            if tested_branch:
-                fork_ref = tested_branch.ref
-            else:
-                fork_ref = upstream_ref
-        update_fork = fork_ref.name != branch.fork.name
-        fork_branch = gc.branches[fork_ref.branch_name]
+            fork_ref = upstream_branch.tested or upstream_ref
+        if not fork_ref:
+            raise Error('No fork reference')
+        fork_branch = gc.branch_by_ref[fork_ref.name]
 
         if not branch.is_jflow:
             raise NotImplementedError('Rebase for non-jflow branches is not implemented yet.')
@@ -122,7 +121,7 @@ class Rebase(CleanMixin, app.Command):
         if update_fork:
             gc.cfg.branch(branch.name).jf.upstream.set(fork_branch.name)
 
-        command.run(['stg', 'rebase', '--merged', fork_ref.name])
+        command.run(['stg', 'rebase', '--merged', fork_branch.ref.name])
         command.run(['git', 'clean', '-d', '--force'])
         self.clean()
 

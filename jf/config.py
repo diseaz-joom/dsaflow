@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-from typing import *
+from typing import List, Dict, TypeVar, Type, Optional, Generator, Tuple
 
 import collections
 import functools
@@ -19,7 +19,7 @@ SEPARATOR = '.'
 
 
 class V1(object):
-    VERSION=1
+    VERSION = 1
 
     @functools.lru_cache(maxsize=None)
     def branch(self, name: str) -> 'BranchKey':
@@ -43,7 +43,8 @@ class V1(object):
 
 KeyT = TypeVar('KeyT', bound='Key')
 
-class Key(object):
+
+class Key:
     def __init__(self, cfg: 'V1' = None, parts: List[str] = None):
         self.cfg: V1 = cfg or V1()
         self.parts: List[str] = parts or []

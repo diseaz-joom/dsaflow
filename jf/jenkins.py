@@ -12,8 +12,6 @@ import urllib.parse as up
 
 import requests
 
-from dsapy import app
-
 
 _logger = logging.getLogger(__name__)
 
@@ -25,6 +23,7 @@ class Error(Exception):
 PREFIX = 'https://api-jenkins.joomdev.net/job/api/job/api-tests/job/'
 API_SUFFIX = 'api/json/'
 DEFAULT_CRED_PATH = os.path.expanduser('~/.secret/jenkins.cred')
+
 
 def api_url(u):
     return up.urljoin(u, API_SUFFIX)
@@ -60,7 +59,6 @@ class Mixin:
     def jenkins_auth(self):
         user, _, password = pathlib.Path(self.flags.jenkins_auth).read_text().rstrip().partition(':')
         return (user, password)
-
 
     @contextlib.contextmanager
     def jenkins_session(self):

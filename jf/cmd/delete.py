@@ -3,16 +3,13 @@
 
 """Remove a branch."""
 
-from typing import *
+from typing import List, Optional
 
 import logging
-import re
 
 from dsapy import app
 
 from jf import command
-from jf import common
-from jf import config
 from jf import git
 
 
@@ -26,7 +23,7 @@ class Error(Exception):
 class Delete(app.Command):
     '''Remove a branch and all related branches.'''
 
-    name='delete'
+    name = 'delete'
 
     @classmethod
     def add_arguments(cls, parser):
@@ -57,9 +54,9 @@ class Delete(app.Command):
 
         branches: List[git.Branch] = []
         for arg in input_branches:
-            b = gc.branch_by_abbrev.get(arg, None)
-            if not b:
+            if arg not in gc.branch_by_abbrev:
                 raise Error(f'Branch {arg!r} not found')
+            b = gc.branch_by_abbrev[arg]
             if b.name == git.current_branch:
                 _logger.error('Cannot delete current branch')
                 continue
@@ -84,12 +81,14 @@ class Delete(app.Command):
         if not ref or not ref.branch_name:
             return
         if ref.is_remote:
+            if not ref.remote:
+                raise Error(f'No remote for remote ref {ref!r}')
             command.run(['git', 'push', ref.remote, f':{ref.branch_name}'])
         else:
             command.run(['git', 'branch', '--delete', '--force', ref.branch_name])
 
     def remove_branch(self, b: git.GenericBranch) -> None:
-        if b.stgit:
+        if b.is_stgit:
             command.run(['stg', 'branch', '--delete', '--force', b.name])
         else:
             command.run(['git', 'branch', '--delete', '--force', b.name])
@@ -105,7 +104,7 @@ class Filter:
 
     def is_merge_status(self, status: str) -> bool:
         all_stats = 'MDFU'
-        sts = []
+        sts = ''
         if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs['master']):
             sts = all_stats
         elif 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs['develop']):

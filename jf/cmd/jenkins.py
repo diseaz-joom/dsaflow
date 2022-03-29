@@ -3,20 +3,20 @@
 
 """Open jenkins build page."""
 
-import urllib.parse as up
-
 from dsapy import app
-from dsapy import flag
 
 from jf import command
-from jf import config
 from jf import git
 from jf import jenkins
 
 
+class Error(Exception):
+    '''Base class for errors in the module.'''
+
+
 class Jenkins(app.Command):
     '''Open jenkins build page.'''
-    name='jenkins'
+    name = 'jenkins'
 
     @classmethod
     def add_arguments(cls, parser):

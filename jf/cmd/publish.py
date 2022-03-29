@@ -3,7 +3,7 @@
 
 """Rebase branch to a fresh tip."""
 
-from typing import *
+from typing import Optional, List
 
 import logging
 import re
@@ -12,10 +12,7 @@ import urllib.parse
 from dsapy import app
 
 from jf import command
-from jf import config
 from jf import git
-from jf import green
-from jf import sync
 
 
 _logger = logging.getLogger(__name__)
@@ -26,10 +23,16 @@ class Error(Exception):
 
 
 class Review:
-    GITHUB_REMOTE_RE = re.compile('(?:https://|[-_+a-z0-9]+@)?github\\.com[:/](?P<repo>.*?)(?:\.git)?$')
-    FIX_RE = re.compile('\[fix:(?P<issue>[^\x5D]+)\]', re.I)
+    GITHUB_REMOTE_RE = re.compile('(?:https://|[-_+a-z0-9]+@)?github\\.com[:/](?P<repo>.*?)(?:\\.git)?$')
+    FIX_RE = re.compile('\\[fix:(?P<issue>[^\x5D]+)\\]', re.I)
 
-    def github_review_url(self, remote_url: str, branch: git.GenericBranch, feature: git.RefName, upstream: git.RefName) -> Optional[str]:
+    def github_review_url(
+            self,
+            remote_url: str,
+            branch: git.GenericBranch,
+            feature: git.RefName,
+            upstream: git.RefName,
+    ) -> Optional[str]:
         github_m = self.GITHUB_REMOTE_RE.match(remote_url)
         if not github_m:
             return None
@@ -49,17 +52,27 @@ class Review:
         if issues:
             body = body + '\n'.join(f'Fixes {issue}' for issue in issues)
 
-        params = {
+        param_dict = {
             'quick_pull': 1,
             'title': title,
             'body': body,
         }
-        params = urllib.parse.urlencode({k:v for k, v in params.items() if v})
+        params = urllib.parse.urlencode({k: v for k, v in param_dict.items() if v})
+        if params:
+            params = '?' + params
 
-        return f'https://github.com/{github_m["repo"]}/compare/{upstream.branch_name}...{feature.branch_name}?{params}'
+        return (f'https://github.com/'
+                f'{github_m["repo"]}/'
+                f'compare/{upstream.branch_name}...{feature.branch_name}'
+                f'{params}')
 
-
-    def review_url(self, gc: git.Cache, branch: git.GenericBranch, feature: git.RefName, upstream: git.RefName) -> Optional[str]:
+    def review_url(
+            self,
+            gc: git.Cache,
+            branch: git.GenericBranch,
+            feature: git.RefName,
+            upstream: git.RefName,
+    ) -> Optional[str]:
         if not feature.remote:
             return None
 
@@ -73,7 +86,7 @@ class Review:
 class Publish(Review, app.Command):
     '''Publish a branch.'''
 
-    name='publish'
+    name = 'publish'
 
     @classmethod
     def add_arguments(cls, parser):
@@ -135,7 +148,7 @@ class Publish(Review, app.Command):
         if not remote_ref:
             raise Error('No remote reference calculated')
         if not remote_ref.branch_name:
-            raise Error(f'Failed to extract branch name from ref {remote_ref_name.name}')
+            raise Error(f'Failed to extract branch name from ref {remote_ref.name}')
         remote_branch_ref = git.RefName.for_branch(git._REMOTE_LOCAL, remote_ref.branch_name)
 
         command.run([

@@ -4,10 +4,8 @@
 import functools
 
 from dsapy import app
-from dsapy.algs import strconv
 
 from jf import color
-from jf import config
 from jf import git
 
 

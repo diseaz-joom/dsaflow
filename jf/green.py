@@ -3,14 +3,9 @@
 
 """Update tested branch."""
 
-from typing import *
+from typing import Optional
 
-import json
 import logging
-
-import requests
-
-from dsapy import app
 
 from jf import command
 from jf import git
@@ -39,7 +34,6 @@ class Mixin(jenkins.Mixin):
         green_upstream_ref_name = git.RefName.for_branch(git._REMOTE_ORIGIN, green_branch_name).name
         green_upstream_ref = gc.refs.get(green_upstream_ref_name, None)
 
-        branch_ref = branch.ref
         branch_ref_name = branch.ref.name
 
         if branch_ref_name == green_upstream_ref_name:

@@ -3,19 +3,16 @@
 
 """Command to start a new branch."""
 
-from typing import *
+from typing import List, Dict, Optional
 
 import collections
 import logging
 
 from dsapy import app
-from dsapy import flag
 
 from jf import command
-from jf import common
 from jf import config
 from jf import git
-from jf import sync
 
 
 _logger = logging.getLogger(__name__)
@@ -35,7 +32,7 @@ def templates(**kwargs):
 class Start(app.Command):
     '''Start a new branch.'''
 
-    name='start'
+    name = 'start'
 
     @classmethod
     def add_arguments(cls, parser):
