@@ -5,8 +5,6 @@
 
 import logging
 
-from dsapy import app
-
 from jf import command
 from jf import git
 from jf import green
