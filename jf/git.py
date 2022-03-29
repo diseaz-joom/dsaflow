@@ -291,6 +291,23 @@ class GenericBranch:
     def remote(self) -> str:
         return self.cfg.branch(self.name).jf.remote.as_str or self.cfg.jf.remote.as_str or _REMOTE_ORIGIN
 
+    @functools.cached_property
+    def description(self) -> str:
+        return self.cfg.branch(self.name).description.as_str
+
+    @functools.cached_property
+    def protected(self) -> bool:
+        return self.cfg.branch(self.name).jf.protected.as_bool
+
+    @functools.cached_property
+    def hidden(self) -> bool:
+        return self.cfg.branch(self.name).jf.hidden.as_bool
+
+    def set_hidden(self, value: bool = True):
+        if value == self.hidden:
+            return
+        self.cfg.branch(self.name).jf.hidden.set(str(value).lower())
+
     @property
     def is_jflow(self) -> bool:
         return bool(self.jflow_version)
@@ -559,23 +576,6 @@ class Branch(GenericBranch):
         if not r:
             return None
         return self.gc.branch_by_ref.get(r.name, None)
-
-    @functools.cached_property
-    def hidden(self) -> bool:
-        return self.gc.cfg.branch(self.name).jf.hidden.as_bool
-
-    @functools.cached_property
-    def protected(self) -> bool:
-        return self.gc.cfg.branch(self.name).jf.protected.as_bool
-
-    def set_hidden(self, value: bool = True):
-        if value == self.hidden:
-            return
-        command.run(['git', 'config', '--local', self.gc.cfg.branch(self.name).jf.hidden.key, str(value).lower()], check=True)
-
-    @functools.cached_property
-    def description(self) -> Optional[str]:
-        return self.gc.cfg.branch(self.name).description.value
 
     def publish_local_public(self, msg: str = None, force_new=False) -> Tuple[Optional[RefName], Optional[RefName]]:
         if not self.public_branch_name:
