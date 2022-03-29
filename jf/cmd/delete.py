@@ -70,10 +70,10 @@ class Delete(app.Command):
 
         for b in branches:
             if b.jflow_version:
-                self.remove_ref(b.debug)
-                self.remove_ref(b.review)
-                self.remove_ref(b.ldebug)
-                self.remove_ref(b.public)
+                refs_list = [b.public, b.ldebug, b.review, b.debug]
+                refs = {r for r in refs_list if r and r != b.ref}
+                for r in refs:
+                    self.remove_ref(r)
                 self.remove_branch(b)
 
                 command.run(['git', 'config', '--remove-section', gc.cfg.branch(b.name).jf.key])
