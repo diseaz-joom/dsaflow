@@ -15,7 +15,7 @@ from dsapy import flag
 _logger = logging.getLogger(__name__)
 
 ENCODING: str = locale.getpreferredencoding()
-FULL_RUN = False
+FULL_RUN = True
 
 
 @flag.argroup('glow.run')
