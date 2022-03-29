@@ -85,7 +85,7 @@ def run(
 ) -> subprocess.CompletedProcess:
     run = force or _globals.full_run
     run_str = 'yes' if run else 'skip'
-    _logger.info('Run[%s]: %s', run_str, ' '.join(shlex.quote(s) for s in args))
+    _logger.debug('Run[%s]: %s', run_str, ' '.join(shlex.quote(s) for s in args))
     if run:
         return subprocess.run(
             args,
@@ -108,7 +108,7 @@ def run_pipe(
 ) -> subprocess.CompletedProcess:
     run = force or _globals.full_run
     run_str = 'yes' if run else 'skip'
-    _logger.info('Run[%s]: %s', run_str, ' | '.join(' '.join(shlex.quote(s) for s in args) for args in cmds))
+    _logger.debug('Run[%s]: %s', run_str, ' | '.join(' '.join(shlex.quote(s) for s in args) for args in cmds))
 
     if run:
         proc = None
