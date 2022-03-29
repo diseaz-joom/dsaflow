@@ -42,6 +42,10 @@ class Start(app.Command):
         super().add_arguments(parser)
 
         parser.add_argument(
+            '-d', '--description',
+            help='Description for a new branch',
+        )
+        parser.add_argument(
             '--upstream',
             metavar='BRANCH',
             help='Use this branch as `upstream` parameter',
@@ -166,6 +170,9 @@ class Start(app.Command):
             if not kv:
                 continue
             getattr(bk, kk).set(kv)
+
+        if self.flags.description:
+            gc.cfg.branch(name).description.set(self.flags.description)
 
 
 if __name__ == '__main__':
