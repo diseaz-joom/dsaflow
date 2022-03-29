@@ -289,7 +289,7 @@ class GenericBranch:
 
     @property
     def remote(self) -> str:
-        return self.cfg.jf.remote.value or _REMOTE_ORIGIN
+        return self.cfg.branch(self.name).jf.remote.as_str or self.cfg.jf.remote.as_str or _REMOTE_ORIGIN
 
     @property
     def is_jflow(self) -> bool:
@@ -365,7 +365,6 @@ class GenericBranch:
     def review_branch_name(self) -> Optional[str]:
         if not self.jflow_version:
             return None
-            # return self.name
         elif self.jflow_version == 1:
             return self.cfg.branch(self.name).jf.review.value
         raise UnsupportedJflowVersionError(self.jflow_version)
@@ -563,7 +562,11 @@ class Branch(GenericBranch):
 
     @functools.cached_property
     def hidden(self) -> bool:
-        return strconv.parse_bool(self.gc.cfg.branch(self.name).jf.hidden.value, False)
+        return self.gc.cfg.branch(self.name).jf.hidden.as_bool
+
+    @functools.cached_property
+    def protected(self) -> bool:
+        return self.gc.cfg.branch(self.name).jf.protected.as_bool
 
     def set_hidden(self, value: bool = True):
         if value == self.hidden:

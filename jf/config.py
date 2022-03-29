@@ -144,17 +144,21 @@ class BranchKey(Key):
 
 class JfBranchKey(Key):
     KEYS = [
-        'version',
+        'version', 'remote',
         'review', 'public',
         'debug', 'ldebug',
         'upstream', 'fork',
-        'hidden', 'tested', 'sync',
+        'hidden', 'protected', 'tested', 'sync',
         'debug_prefix', 'debug_suffix',
     ]
 
     @functools.cached_property
     def version(self) -> Key:
         return Key.append(self, 'version')
+
+    @functools.cached_property
+    def remote(self) -> Key:
+        return Key.append(self, 'remote-name')
 
     @functools.cached_property
     def public(self) -> Key:
@@ -198,6 +202,10 @@ class JfBranchKey(Key):
         massive operations.
         '''
         return Key.append(self, 'hidden')
+
+    @functools.cached_property
+    def protected(self) -> Key:
+        return Key.append(self, 'protected')
 
     @functools.cached_property
     def tested(self) -> Key:

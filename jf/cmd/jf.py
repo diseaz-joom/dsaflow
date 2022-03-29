@@ -3,6 +3,7 @@
 
 import jf.cmd.commits
 import jf.cmd.config
+import jf.cmd.delete
 import jf.cmd.jenkins
 import jf.cmd.list
 import jf.cmd.publish
