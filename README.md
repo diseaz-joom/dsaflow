@@ -1,5 +1,14 @@
-Tools for my personal workflow.
+# What is it?
 
-It's not intended to be universal but suitable for me personally. Use at your own risk.
+`jf` is a tool to implement Git workflow with less typing. Initially a
+[Gitflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow)
+was in mind but tool may implement slightly modified workflows with
+configuration.
 
-WARNING: it's not even pre-alpha. Absolutely experimental and unstable.
+# Disclaimer
+
+It's not intended to be universally useful but suits me personally. Use at your
+own risk.
+
+The tool is absolutely experimental, unstable and going to break compatibility
+and any random moment.
