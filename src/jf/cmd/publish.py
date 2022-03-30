@@ -76,7 +76,7 @@ class Review:
         if not feature.remote:
             return None
 
-        remote_url = gc.cfg.remote(feature.remote).url.value
+        remote_url = gc.cfg.remote[feature.remote].url.value
         if not remote_url:
             return None
 

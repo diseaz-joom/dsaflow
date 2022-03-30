@@ -70,22 +70,6 @@ class Kind(enum.Enum):
     patch = enum.auto()
     patch_log = enum.auto()
 
-    @classmethod
-    def from_refname(cls, ref_name: str) -> 'Kind':
-        if ref_name.startswith(HEAD_PREFIX):
-            if ref_name.endswith(STGIT_SUFFIX):
-                return cls.stgit
-            return cls.head
-        if ref_name.startswith(TAG_PREFIX):
-            return cls.tag
-        if ref_name.startswith(REMOTE_PREFIX):
-            return cls.remote
-        if ref_name.startswith(PATCH_PREFIX):
-            if ref_name.endswith(PATCH_LOG_SUFFIX):
-                return cls.patch_log
-            return cls.patch
-        return cls.unknown
-
 
 class Commit(object):
     def __init__(self, sha: str, *, refs: List[str] = None):
@@ -270,7 +254,7 @@ class GenericBranch:
           branches.
     '''
 
-    def __init__(self, cfg: config.V1, ref: RefName):
+    def __init__(self, cfg: config.Root, ref: RefName):
         if not ref.branch_name:
             raise Error(f'Invalid branch ref: {ref.name}')
         self.cfg = cfg
@@ -285,24 +269,24 @@ class GenericBranch:
 
     @property
     def remote(self) -> str:
-        return self.cfg.branch(self.name).jf.remote.as_str or self.cfg.jf.remote.as_str or _REMOTE_ORIGIN
+        return self.cfg.branch[self.name].jf.remote.value or self.cfg.jf.remote.value or _REMOTE_ORIGIN
 
     @functools.cached_property
     def description(self) -> str:
-        return self.cfg.branch(self.name).description.as_str
+        return self.cfg.branch[self.name].description.value
 
     @functools.cached_property
     def protected(self) -> bool:
-        return self.cfg.branch(self.name).jf.protected.as_bool
+        return self.cfg.branch[self.name].jf.protected.value
 
     @functools.cached_property
     def hidden(self) -> bool:
-        return self.cfg.branch(self.name).jf.hidden.as_bool
+        return self.cfg.branch[self.name].jf.hidden.value
 
     def set_hidden(self, value: bool = True):
         if value == self.hidden:
             return
-        self.cfg.branch(self.name).jf.hidden.set(str(value).lower())
+        self.cfg.branch[self.name].jf.hidden.set(value)
 
     @property
     def is_jflow(self) -> bool:
@@ -310,7 +294,7 @@ class GenericBranch:
 
     @functools.cached_property
     def jflow_version(self) -> int:
-        return self.cfg.branch(self.name).jf.version.as_int
+        return self.cfg.branch[self.name].jf.version.value
 
     @property
     def is_stgit(self) -> bool:
@@ -318,7 +302,7 @@ class GenericBranch:
 
     @functools.cached_property
     def stgit_version(self) -> int:
-        return self.cfg.branch(self.name).stgit.version.as_int
+        return self.cfg.branch[self.name].stgit.version.value
 
     @functools.cached_property
     def stgit_branch_name(self) -> Optional[str]:
@@ -337,7 +321,7 @@ class GenericBranch:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf.public.value
+            return self.cfg.branch[self.name].jf.lreview.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -351,7 +335,7 @@ class GenericBranch:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf.debug.value
+            return self.cfg.branch[self.name].jf.debug.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -365,7 +349,7 @@ class GenericBranch:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf.ldebug.value or self.debug_branch_name
+            return self.cfg.branch[self.name].jf.ldebug.value or self.debug_branch_name
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -379,7 +363,7 @@ class GenericBranch:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf.review.value
+            return self.cfg.branch[self.name].jf.review.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -398,12 +382,12 @@ class GenericBranch:
     @functools.cached_property
     def upstream_name(self) -> Optional[RefName]:
         if not self.jflow_version:
-            b = self.cfg.branch(self.name)
+            b = self.cfg.branch[self.name]
             if b.merge.value:
-                return RefName.for_branch(b.remote.as_str, RefName(b.merge.as_str).branch_name or '')
+                return RefName.for_branch(b.remote.value, RefName(b.merge.value).branch_name or '')
             return None
         elif self.jflow_version == 1:
-            return RefName.for_branch(_REMOTE_LOCAL, self.cfg.branch(self.name).jf.upstream.as_str)
+            return RefName.for_branch(_REMOTE_LOCAL, self.cfg.branch[self.name].jf.upstream.value)
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
@@ -418,7 +402,7 @@ class GenericBranch:
         if not self.jflow_version:
             return self.upstream_name
         elif self.jflow_version == 1:
-            name = self.cfg.branch(self.name).jf.fork.as_str
+            name = self.cfg.branch[self.name].jf.fork.value
             if not name:
                 return self.upstream_name
             return RefName.for_branch(_REMOTE_LOCAL, name)
@@ -426,7 +410,7 @@ class GenericBranch:
 
     @functools.cached_property
     def tested_branch_name(self) -> Optional[str]:
-        return self.cfg.branch(self.name).jf.tested.value
+        return self.cfg.branch[self.name].jf.tested.value
 
     @functools.cached_property
     def tested_name(self) -> Optional[RefName]:
@@ -437,15 +421,15 @@ class GenericBranch:
     @functools.cached_property
     def sync(self) -> bool:
         if not self.jflow_version:
-            if self.cfg.branch(self.name).jf.sync.as_bool:
+            if self.cfg.branch[self.name].jf.sync.value:
                 return True
-            if not self.cfg.jf.autosync.as_bool:
+            if not self.cfg.jf.autosync.value:
                 return False
             if not (self.upstream_name and self.upstream_name.is_remote):
                 return False
             return True
         elif self.jflow_version == 1:
-            return self.cfg.branch(self.name).jf.sync.as_bool
+            return self.cfg.branch[self.name].jf.sync.value
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     def gen_related_refs(self) -> Generator[RefName, None, None]:
@@ -631,8 +615,8 @@ _cache_properties = {'cfg'}
 
 
 class Cache(object):
-    def __init__(self, cfg: config.V1 = None):
-        self.cfg = cfg or config.V1()
+    def __init__(self, cfg: config.Root = None):
+        self.cfg = cfg or config.Root()
 
     def reset(self):
         for k in self.__dict__.keys():

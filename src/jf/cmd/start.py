@@ -84,10 +84,10 @@ class Start(app.Command):
 
         name = self.flags.name
         matches = []
-        for t in gc.cfg.jf.templates_list:
+        for t in gc.cfg.jf.template.keys:
             if (
                 name.startswith(t)
-                and gc.cfg.jf.template(t).version.as_int == 1
+                and gc.cfg.jf.template[t].version.value == 1
             ):
                 matches.append(t)
         if not matches:
@@ -109,8 +109,8 @@ class Start(app.Command):
         )
 
         for t in matches:
-            tk = gc.cfg.jf.template(t)
-            for k in config.JfTemplateKey.KEYS:
+            tk = gc.cfg.jf.template[t]
+            for k in config.JfTemplateCfg.KEYS:
                 kk = getattr(tk, k)
                 if kk.value is None:
                     continue
@@ -122,7 +122,7 @@ class Start(app.Command):
 
         rc: Dict[str, Optional[str]] = {
             'version': tc.get('version', None),
-            'public': self.flags.lreview or f'{tc["lreview_prefix"]}{base}{tc["lreview_suffix"]}',
+            'lreview': self.flags.lreview or f'{tc["lreview_prefix"]}{base}{tc["lreview_suffix"]}',
             'review': self.flags.review or f'{tc["review_prefix"]}{base}{tc["review_suffix"]}',
             'ldebug': self.flags.ldebug or f'{tc["ldebug_prefix"]}{base}{tc["ldebug_suffix"]}',
             'debug': self.flags.debug or f'{tc["debug_prefix"]}{base}{tc["debug_suffix"]}',
@@ -148,21 +148,21 @@ class Start(app.Command):
 
         if fork_ref.is_remote:
             command.run(['git', 'branch', '--force', fork_ref.branch_name, fork_ref.name])
-            bk = gc.cfg.branch(fork_ref.branch_name).jf
-            bk.sync.set('true')
+            bk = gc.cfg.branch[fork_ref.branch_name].jf
+            bk.sync.set(True)
             fork_ref = git.RefName.for_branch(git._REMOTE_LOCAL, fork_ref.branch_name)
 
         command.run(['stg', 'branch', '--create', name, fork_ref.name])
         command.run(['stg', 'new', '--message=WIP', 'wip'])
 
-        bk = gc.cfg.branch(name).jf
+        bk = gc.cfg.branch[name].jf
         for kk, kv in rc.items():
             if not kv:
                 continue
             getattr(bk, kk).set(kv)
 
         if self.flags.description:
-            gc.cfg.branch(name).description.set(self.flags.description)
+            gc.cfg.branch[name].description.set(self.flags.description)
 
 
 if __name__ == '__main__':

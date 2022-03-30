@@ -117,9 +117,9 @@ class Rebase(CleanMixin, app.Command):
             raise UnsupportedJflowVersionError(branch.jflow_version)
 
         if update_upstream:
-            gc.cfg.branch(branch.name).jf.upstream.set(upstream_branch.name)
+            gc.cfg.branch[branch.name].jf.upstream.set(upstream_branch.name)
         if update_fork:
-            gc.cfg.branch(branch.name).jf.upstream.set(fork_branch.name)
+            gc.cfg.branch[branch.name].jf.fork.set(fork_branch.name)
 
         command.run(['stg', 'rebase', '--merged', fork_branch.ref.name])
         command.run(['git', 'clean', '-d', '--force'])
