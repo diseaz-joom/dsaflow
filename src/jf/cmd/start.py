@@ -22,13 +22,6 @@ class Error(Exception):
     '''Base class for errors in the module.'''
 
 
-@app.main()
-def templates(**kwargs):
-    gc = git.Cache()
-    templates = gc.cfg.jf.templates_list
-    print(f'Templates: {templates!r}')
-
-
 class Start(app.Command):
     '''Start a new branch.'''
 
