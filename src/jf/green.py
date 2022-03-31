@@ -21,7 +21,7 @@ class Error(Exception):
 
 class Mixin(jenkins.Mixin):
     def green_all(self, gc: git.Cache) -> None:
-        for branch_name in gc.cfg.jf.default_green.as_list:
+        for branch_name in gc.cfg.jf.default_green.value:
             self.green(gc, gc.branches[branch_name])
 
     def green(self, gc: git.Cache, branch: git.Branch) -> None:
@@ -104,7 +104,7 @@ class Mixin(jenkins.Mixin):
 
         if not ref:
             command.run(['git', 'branch', '--force', branch_name, upstream_ref.name])
-            gc.cfg.branch(branch_name).jf.hidden.set('true')
+            gc.cfg.branch[branch_name].jf.hidden.set(True)
             return git.Ref(ref_name, upstream_ref.sha)
 
         if gc.is_merged_into(upstream_ref.sha, ref.sha):

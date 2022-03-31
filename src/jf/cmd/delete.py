@@ -73,7 +73,7 @@ class Delete(app.Command):
                     self.remove_ref(r)
                 self.remove_branch(b)
 
-                command.run(['git', 'config', '--remove-section', gc.cfg.branch(b.name).jf.key])
+                command.run(['git', 'config', '--remove-section', gc.cfg.branch[b.name].jf.path])
             else:
                 self.remove_branch(b)
 

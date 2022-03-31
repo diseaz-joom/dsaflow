@@ -113,29 +113,3 @@ class Info(app.Command):
         for k in config.JfBranchKey.KEYS:
             kv = getattr(bk, k).value
             print(f'  {k}: {kv!r}')
-
-
-@app.main(name='current-ref')
-def current_ref(**kwargs):
-    '''Print current ref name.'''
-    if not git.current_ref:
-        return
-    print(git.current_ref)
-
-
-class Resolve(app.Command):
-    name = 'resolve'
-
-    @classmethod
-    def add_arguments(cls, parser):
-        super().add_arguments(parser)
-
-        parser.add_argument(
-            'shortcut',
-            help='Shortcut to resolve',
-        )
-
-    def main(self):
-        gc = git.Cache()
-        r = gc.resolve_shortcut(self.flags.shortcut)
-        print(f'Resolved: {r!r}')

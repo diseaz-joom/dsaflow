@@ -3,6 +3,7 @@
 
 import jf.cmd.commits
 import jf.cmd.config
+import jf.cmd.debug
 import jf.cmd.delete
 import jf.cmd.jenkins
 import jf.cmd.list
@@ -18,6 +19,7 @@ from dsapy import app
 (
     jf.cmd.commits
     and jf.cmd.config
+    and jf.cmd.debug
     and jf.cmd.delete
     and jf.cmd.jenkins
     and jf.cmd.list
