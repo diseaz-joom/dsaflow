@@ -13,7 +13,7 @@ class Error(Exception):
     '''Base for errors in the module.'''
 
 
-SEPARATOR = '.'
+SEPARATOR = schema.SEPARATOR
 
 
 class JfTemplateCfg(schema.SectionCfg):
