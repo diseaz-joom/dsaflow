@@ -39,27 +39,27 @@ class Config(app.Command):
         gc = git.Cache()
         b = gc.branches[self.flags.branch]
         if self.flags.set:
-            k = getattr(gc.cfg.branch(b.name).jf, self.flags.set)
+            k = getattr(gc.cfg.branch[b.name].jf, self.flags.set)
             if self.flags.value is None:
                 k.unset()
             else:
-                k.set(self.flags.value)
+                k.set_str(self.flags.value)
         else:
-            bk = gc.cfg.branch(b.name)
+            bk = gc.cfg.branch[b.name]
             for k in ['remote', 'merge']:
                 kk = getattr(bk, k)
                 if kk.value is None:
                     continue
-                print(f'{kk.key} {kk.value}')
-            bk = gc.cfg.branch(b.name).stgit
+                print(f'{kk.path} {kk.value}')
+            sk = bk.stgit
             for k in ['version', 'parentbranch']:
-                kk = getattr(bk, k)
+                kk = getattr(sk, k)
                 if kk.value is None:
                     continue
-                print(f'{kk.key} {kk.value}')
-            bk = gc.cfg.branch(b.name).jf.key + config.SEPARATOR
-            for k, v in gc.cfg.config.items():
-                if not k.startswith(bk):
+                print(f'{kk.path} {kk.value}')
+            jp = gc.cfg.branch[b.name].jf.path + config.SEPARATOR
+            for k, v in gc.cfg.raw.items():
+                if not k.startswith(jp):
                     continue
                 print(f'{k} {v!r}')
 
@@ -108,8 +108,8 @@ class Info(app.Command):
         for k in self._BRANCH_PROPS:
             kv = getattr(b, k)
             print(f'  {k}: {kv!r}')
-        bk = gc.cfg.branch(b.name).jf
-        print(f'Jflow config ({bk.key}):')
-        for k in config.JfBranchKey.KEYS:
-            kv = getattr(bk, k).value
-            print(f'  {k}: {kv!r}')
+        bk = gc.cfg.branch[b.name].jf
+        print(f'Jflow config ({bk.path}):')
+        for k in config.JfBranchCfg.KEYS:
+            kk = getattr(bk, k)
+            print(f'  {k}: {kk.value!r}')

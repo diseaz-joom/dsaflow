@@ -118,6 +118,9 @@ class MaybeValueCfg(Generic[TValue], CfgPath):
     def set(self, value: TValue) -> None:
         self.cfg.set(self.path, self.t.to_string(value))
 
+    def set_str(self, s: str) -> None:
+        self.set(self.t.from_string(s))
+
 
 class ValueCfg(Generic[TValue], CfgPath):
     def __init__(self, base: CfgPath, path: List[str], t: ValueType[TValue], default: TValue) -> None:
@@ -134,6 +137,9 @@ class ValueCfg(Generic[TValue], CfgPath):
 
     def set(self, value: TValue) -> None:
         self.cfg.set(self.path, self.t.to_string(value))
+
+    def set_str(self, s: str) -> None:
+        self.set(self.t.from_string(s))
 
 
 class ListValueCfg(Generic[TValue], CfgPath):
@@ -155,6 +161,13 @@ class ListValueCfg(Generic[TValue], CfgPath):
 
     def append(self, value: TValue) -> None:
         self.cfg.append(self.path, self.t.to_string(value))
+
+
+    def set_str(self, ss: List[str]) -> None:
+        self.set([self.t.from_string(s) for s in ss])
+
+    def append_str(self, s: str) -> None:
+        self.append(self.t.from_string(s))
 
 
 class MapCfg(Generic[TValue], SectionCfg):
