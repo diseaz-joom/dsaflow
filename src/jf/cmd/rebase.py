@@ -38,6 +38,8 @@ class CleanMixin:
 
 
 class Clean(CleanMixin, app.Command):
+    '''Clean garbage files after rebase.'''
+
     name = 'clean'
 
     def main(self) -> None:
