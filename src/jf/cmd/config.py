@@ -12,6 +12,8 @@ class Error(Exception):
 
 
 class Config(app.Command):
+    '''Display or modify branch config.'''
+
     name = 'config'
 
     @classmethod
@@ -62,54 +64,3 @@ class Config(app.Command):
                 if not k.startswith(jp):
                     continue
                 print(f'{k} {v!r}')
-
-
-class Info(app.Command):
-    name = 'info'
-
-    _BRANCH_PROPS = [
-        'name',
-        'remote',
-        'is_jflow',
-        'is_stgit',
-        'upstream_name',
-        'upstream',
-        'fork_name',
-        'fork',
-        'ldebug_name',
-        'ldebug',
-        'debug_name',
-        'debug',
-        'public_name',
-        'public',
-        'review_name',
-        'review',
-        'hidden',
-        'protected',
-        'sync',
-        'tested',
-    ]
-
-    @classmethod
-    def add_arguments(cls, parser):
-        super().add_arguments(parser)
-
-        parser.add_argument(
-            'branch',
-            nargs='?',
-            default=git.current_branch,
-            help='Branch to operate on',
-        )
-
-    def main(self):
-        gc = git.Cache()
-        b = gc.branches[self.flags.branch]
-        print('Branch:')
-        for k in self._BRANCH_PROPS:
-            kv = getattr(b, k)
-            print(f'  {k}: {kv!r}')
-        bk = gc.cfg.branch[b.name].jf
-        print(f'Jflow config ({bk.path}):')
-        for k in config.JfBranchCfg.KEYS:
-            kk = getattr(bk, k)
-            print(f'  {k}: {kk.value!r}')

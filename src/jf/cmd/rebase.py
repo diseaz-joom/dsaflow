@@ -38,6 +38,8 @@ class CleanMixin:
 
 
 class Clean(CleanMixin, app.Command):
+    '''Clean garbage files after rebase.'''
+
     name = 'clean'
 
     def main(self) -> None:
@@ -106,7 +108,8 @@ class Rebase(CleanMixin, app.Command):
             fork_ref = upstream_branch.tested or upstream_ref
         if not fork_ref:
             raise Error('No fork reference')
-        fork_branch = gc.branch_by_ref[fork_ref.name]
+        if not fork_ref.branch_name:
+            raise Error(f'Fork ref {fork_ref!r} is not a branch')
 
         if not branch.is_jflow:
             raise NotImplementedError('Rebase for non-jflow branches is not implemented yet.')
@@ -119,11 +122,11 @@ class Rebase(CleanMixin, app.Command):
         if update_upstream:
             gc.cfg.branch[branch.name].jf.upstream.set(upstream_branch.name)
         if update_fork:
-            gc.cfg.branch[branch.name].jf.fork.set(fork_branch.name)
+            gc.cfg.branch[branch.name].jf.fork.set(fork_ref.branch_name)
 
-        command.run(['stg', 'rebase', '--merged', fork_branch.ref.name])
+        command.run(['stg', 'rebase', '--merged', fork_ref.name])
         command.run(['git', 'clean', '-d', '--force'])
         self.clean()
 
         if need_publish:
-            branch.publish_local_public(msg=f'Merge {fork_branch.name} into {branch.name}')
+            branch.publish_local_public(msg=f'Merge {fork_ref.branch_name} into {branch.name}')

@@ -42,7 +42,7 @@ class Mixin(green.Mixin):
                 if not upstream:
                     continue
                 if gc.is_merged_into(upstream.sha, b.ref.sha):
-                    return
+                    continue
                 command.run(['git', 'branch', '--force', '--no-track', b.name, upstream.name])
 
             if self.flags.with_green:
