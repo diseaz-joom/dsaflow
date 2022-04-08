@@ -39,8 +39,15 @@ class Green(green.Mixin, app.Command):
         )
 
     def main(self):
+        git.check_workdir_is_clean()
+
         gc = git.Cache()
-        self.green(gc, self.flags.branch, self.flags.tested)
+
+        branch_name = git.current_branch
+        if not branch_name:
+            raise Error('HEAD is not a branch')
+        branch = gc.branches[branch_name]
+        self.green(gc, branch)
 
 
 class Sync(sync.Mixin, app.Command):

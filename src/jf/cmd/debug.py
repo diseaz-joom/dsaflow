@@ -36,6 +36,7 @@ class Info(app.Command):
         'hidden',
         'protected',
         'sync',
+        'tested_branch_name',
         'tested',
     ]
 
