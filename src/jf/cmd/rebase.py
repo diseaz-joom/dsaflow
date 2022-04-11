@@ -3,6 +3,8 @@
 
 """Rebase branch to a fresh tip."""
 
+from typing import Optional
+
 import logging
 
 from dsapy import app
@@ -108,6 +110,9 @@ class Rebase(CleanMixin, app.Command):
                         base_ref = upstream_ref
                     else:
                         _logger.warning(f'Upstream ref {upstream_ref.name!r} is not a branch')
+
+        if not base_ref:
+            raise Error('What to rebase on?')
 
         command.run(['stg', 'rebase', '--merged', base_ref.name])
         command.run(['git', 'clean', '-d', '--force'])

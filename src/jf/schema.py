@@ -162,7 +162,6 @@ class ListValueCfg(Generic[TValue], CfgPath):
     def append(self, value: TValue) -> None:
         self.cfg.append(self.path, self.t.to_string(value))
 
-
     def set_str(self, ss: List[str]) -> None:
         self.set([self.t.from_string(s) for s in ss])
 
