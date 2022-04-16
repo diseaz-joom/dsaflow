@@ -13,6 +13,7 @@ from dsapy import app
 
 from jf import command
 from jf import git
+from jf import repo
 
 
 _logger = logging.getLogger(__name__)
@@ -68,7 +69,7 @@ class Review:
 
     def review_url(
             self,
-            gc: git.Cache,
+            gc: repo.Cache,
             branch: git.GenericBranch,
             feature: git.RefName,
             upstream: git.RefName,
@@ -128,7 +129,7 @@ class Publish(Review, app.Command):
         if not self.flags.non_clean:
             git.check_workdir_is_clean()
 
-        gc = git.Cache()
+        gc = repo.Cache()
 
         branch_name = git.current_branch
         if not branch_name:
@@ -149,7 +150,7 @@ class Publish(Review, app.Command):
             raise Error('No remote reference calculated')
         if not remote_ref.branch_name:
             raise Error(f'Failed to extract branch name from ref {remote_ref.name}')
-        remote_branch_ref = git.RefName.for_branch(git._REMOTE_LOCAL, remote_ref.branch_name)
+        remote_branch_ref = git.RefName.for_branch(git.REMOTE_LOCAL, remote_ref.branch_name)
 
         command.run([
             'git', 'push', '--force', remote_ref.remote,

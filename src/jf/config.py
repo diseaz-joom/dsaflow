@@ -6,6 +6,7 @@ from typing import List, Dict, Optional, Generator, Tuple
 import collections
 
 from jf import command
+from jf import common
 from jf import schema
 
 
@@ -67,13 +68,13 @@ class JfBranchCfg(schema.SectionCfg):
     version = schema.Value(schema.IntType, ['version'], default=0)
     remote = schema.MaybeValue(schema.StrType, ['remote-name'])
 
-    upstream = schema.Value(schema.StrType, ['upstream'], '')
-    fork = schema.Value(schema.StrType, ['fork'], '')
+    upstream = schema.Value(schema.BranchType, ['upstream'], common.ZeroBranchName)
+    fork = schema.Value(schema.BranchType, ['fork'], common.ZeroBranchName)
 
-    ldebug = schema.MaybeValue(schema.StrType, ['ldebug'])
-    debug = schema.MaybeValue(schema.StrType, ['debug'])
-    lreview = schema.MaybeValue(schema.StrType, ['public'])
-    review = schema.MaybeValue(schema.StrType, ['remote'])
+    ldebug = schema.MaybeValue(schema.BranchType, ['ldebug'])
+    debug = schema.MaybeValue(schema.BranchType, ['debug'])
+    lreview = schema.MaybeValue(schema.BranchType, ['public'])
+    review = schema.MaybeValue(schema.BranchType, ['remote'])
 
     debug_prefix = schema.MaybeValue(schema.StrType, ['debug-prefix'])
     debug_suffix = schema.MaybeValue(schema.StrType, ['debug-suffix'])
@@ -84,7 +85,7 @@ class JfBranchCfg(schema.SectionCfg):
     protected = schema.Value(schema.BoolType, ['protected'], default=False)
     sync = schema.Value(schema.BoolType, ['sync'], default=False)
 
-    tested = schema.MaybeValue(schema.StrType, ['tested'])
+    tested = schema.MaybeValue(schema.BranchType, ['tested'])
 
 
 class StgitBranchCfg(schema.SectionCfg):

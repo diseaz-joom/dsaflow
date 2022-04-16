@@ -13,6 +13,7 @@ from dsapy import app
 from jf import command
 from jf import config
 from jf import git
+from jf import repo
 
 
 _logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ class Start(app.Command):
     def main(self) -> None:
         git.check_workdir_is_clean()
 
-        gc = git.Cache()
+        gc = repo.Cache()
 
         name = self.flags.name
         matches = []
@@ -96,7 +97,7 @@ class Start(app.Command):
 
         return self.main_v1(gc, name, matches)
 
-    def main_v1(self, gc: git.Cache, name: str, matches: List[str]) -> None:
+    def main_v1(self, gc: repo.Cache, name: str, matches: List[str]) -> None:
         prefix = matches[-1]
         base = name[len(prefix):]
 
@@ -150,7 +151,7 @@ class Start(app.Command):
             command.run(['git', 'branch', '--force', fork_ref.branch_name, fork_ref.name])
             bk = gc.cfg.branch[fork_ref.branch_name].jf
             bk.sync.set(True)
-            fork_ref = git.RefName.for_branch(git._REMOTE_LOCAL, fork_ref.branch_name)
+            fork_ref = git.RefName.for_branch(git.REMOTE_LOCAL, fork_ref.branch_name)
 
         command.run(['stg', 'branch', '--create', name, fork_ref.name])
         command.run(['stg', 'new', '--message=WIP', 'wip'])
