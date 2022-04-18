@@ -351,7 +351,13 @@ class GenericBranch:
     @functools.cached_property
     def upstream_name(self) -> Optional[RefName]:
         if not self.jflow_version:
-            return None
+            b = self.cfg
+            if not b.merge.value:
+                return None
+            bn = RefName(b.merge.value).branch_name
+            if not bn:
+                return None
+            return RefName.for_branch(b.remote.value, bn)
         elif self.jflow_version == 1:
             return RefName.for_branch(REMOTE_LOCAL, self.cfg.jf.upstream.value)
         raise UnsupportedJflowVersionError(self.jflow_version)
