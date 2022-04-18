@@ -2,6 +2,7 @@
 # -*- mode: python; coding: utf-8 -*-
 
 import functools
+import typing as t
 
 from jf import color
 from jf import git
@@ -14,6 +15,9 @@ class Error(Exception):
 
 
 class ListLine:
+    DEVELOP_REF = git.RefName('develop')
+    MASTER_REF = git.RefName('master')
+
     def __init__(self, gc: repo.Cache, b: repo.Branch, maxlen: int = None):
         self.gc = gc
         self.b = b
@@ -36,8 +40,8 @@ class ListLine:
         return 's' if self.b.is_stgit else '.'
 
     @functools.lru_cache(maxsize=None)
-    def is_merged_into(self, m: git.Ref) -> bool:
-        return m.is_valid and self.gc.is_merged_into(self.b.sha, m.sha)
+    def is_merged_into(self, m: t.Optional[git.Ref]) -> bool:
+        return bool(m and m.is_valid and self.gc.is_merged_into(self.b.sha, m.sha))
 
     @property
     def public(self) -> str:
@@ -47,17 +51,17 @@ class ListLine:
 
     @property
     def review(self) -> str:
-        if self.b.review_resolved:
+        if self.b.review_resolved and self.b.ref != self.b.review_resolved:
             return 'R'
-        if self.b.public_resolved:
+        if self.b.public_resolved and self.b.ref != self.b.public_resolved:
             return 'r'
         return '.'
 
     @property
     def debug(self) -> str:
-        if self.b.debug_resolved:
+        if self.b.debug_resolved and self.b.ref != self.b.debug_resolved:
             return 'D'
-        if self.b.ldebug_resolved:
+        if self.b.ldebug_resolved and self.b.ref != self.b.ldebug_resolved:
             return 'd'
         return '.'
 
@@ -68,9 +72,11 @@ class ListLine:
             r = 'U'
         if self.b.fork_resolved and self.is_merged_into(self.b.fork_resolved):
             r = 'F'
-        if 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('develop')]):
+        develop_ref = self.gc.refs.get(self.DEVELOP_REF, None)
+        if self.b.ref != develop_ref and self.is_merged_into(develop_ref):
             r = 'D'
-        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('master')]):
+        master_ref = self.gc.refs.get(self.MASTER_REF, None)
+        if self.b.ref != master_ref and self.is_merged_into(master_ref):
             r = 'M'
         return r
 

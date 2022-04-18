@@ -163,7 +163,7 @@ class Ref(RefName):
         return v
 
     def __repr__(self) -> str:
-        r = repr(str(self))
+        r = str(self)
         return f'Ref({r!r}, {self.sha!r})'
 
     @property
