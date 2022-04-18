@@ -52,7 +52,7 @@ def delete(branches: Sequence[str], merged: str):
 
     for b in bs:
         if b.jflow_version:
-            refs_list = [b.public, b.ldebug, b.review, b.debug]
+            refs_list = [b.public_resolved, b.ldebug_resolved, b.review_resolved, b.debug_resolved]
             refs = {r for r in refs_list if r and r != b.ref}
             for r in refs:
                 _remove_ref(r)
@@ -64,14 +64,14 @@ def delete(branches: Sequence[str], merged: str):
 
 
 def _remove_ref(ref: Optional[git.RefName]) -> None:
-    if not ref or not ref.branch_name:
+    if not ref or not ref.branch:
         return
     if ref.is_remote:
         if not ref.remote:
             raise Error(f'No remote for remote ref {ref!r}')
-        command.run(['git', 'push', ref.remote, f':{ref.branch_name}'])
+        command.run(['git', 'push', ref.remote, f':{ref.branch}'])
     else:
-        command.run(['git', 'branch', '--delete', '--force', ref.branch_name])
+        command.run(['git', 'branch', '--delete', '--force', ref.branch])
 
 
 def _remove_branch(b: git.GenericBranch) -> None:
@@ -92,12 +92,12 @@ class Filter:
     def is_merge_status(self, status: str) -> bool:
         all_stats = 'MDFU'
         sts = ''
-        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs['master']):
+        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('master')]):
             sts = all_stats
-        elif 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs['develop']):
+        elif 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('develop')]):
             sts = all_stats[1:]
-        elif self.is_merged_into(self.b.fork):
+        elif self.is_merged_into(self.b.fork_resolved):
             sts = all_stats[2:]
-        elif self.is_merged_into(self.b.upstream):
+        elif self.is_merged_into(self.b.upstream_resolved):
             sts = all_stats[3:]
         return status in sts

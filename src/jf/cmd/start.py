@@ -104,25 +104,27 @@ def start(
     upstream_ref = gc.resolve_shortcut(upstream_shortcut)
     if not upstream_ref:
         raise Error(f'Cannot detect upstream for {upstream_shortcut!r}')
-    if not upstream_ref.branch_name:
+    if not upstream_ref.branch:
         raise Error('Unsupported ref kind: {upstream_ref.name!r}')
-    rc['upstream'] = upstream_ref.branch_name
+    rc['upstream'] = upstream_ref.branch
 
     fork_shortcut = fork or tc['fork']
     fork_ref: Optional[git.RefName] = gc.resolve_shortcut(fork_shortcut)
     if not fork_ref:
         raise Error(f'Cannot detect fork for {fork_shortcut!r}')
-    if not fork_ref.branch_name:
+    if not fork_ref.branch:
         raise Error('Unsupported ref kind: {fork_ref.name!r}')
-    rc['fork'] = fork_ref.branch_name
+    rc['fork'] = fork_ref.branch
 
     if fork_ref.is_remote:
-        command.run(['git', 'branch', '--force', fork_ref.branch_name, fork_ref.name])
-        bk = gc.cfg.branch[fork_ref.branch_name].jf
+        if not fork_ref.branch:
+            raise Error(f'Strange remote non-branch: {fork_ref!r}')
+        command.run(['git', 'branch', '--force', fork_ref.branch, fork_ref])
+        bk = gc.cfg.branch[fork_ref.branch].jf
         bk.sync.set(True)
-        fork_ref = git.RefName.for_branch(git.REMOTE_LOCAL, fork_ref.branch_name)
+        fork_ref = git.RefName.for_branch(git.REMOTE_LOCAL, fork_ref.branch)
 
-    command.run(['stg', 'branch', '--create', name, fork_ref.name])
+    command.run(['stg', 'branch', '--create', name, fork_ref])
     command.run(['stg', 'new', '--message=WIP', 'wip'])
 
     bk = gc.cfg.branch[name].jf

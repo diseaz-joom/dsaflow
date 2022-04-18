@@ -28,6 +28,8 @@ def jenkins_cmd(branch: str, debug: bool):
         raise Error('HEAD is not a branch')
     b = gc.branches[branch]
 
-    build_branch_name = b.debug_branch_name if debug else b.review_branch_name
-    url = jenkins.branch_url(build_branch_name)
+    build_name = b.debug if debug else b.review
+    if not build_name:
+        return
+    url = jenkins.branch_url(build_name.branch)
     command.run(['xdg-open', url])

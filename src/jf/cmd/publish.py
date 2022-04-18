@@ -62,25 +62,22 @@ def publish(message: str, debug: bool, new: bool, local: bool, pr: bool, non_cle
     if not local_ref:
         return
 
-    if not branch.upstream_name:
+    if not branch.upstream:
         raise Error(f'No upstream for branch {branch.name!r}')
     if not remote_ref:
         raise Error('No remote reference calculated')
-    if not remote_ref.branch_name:
-        raise Error(f'Failed to extract branch name from ref {remote_ref.name}')
-    remote_branch_ref = git.RefName.for_branch(git.REMOTE_LOCAL, remote_ref.branch_name)
+    if not remote_ref.branch:
+        raise Error(f'Failed to extract branch name from ref {remote_ref}')
+    remote_branch_ref = git.RefName.for_branch(git.REMOTE_LOCAL, remote_ref.branch)
 
     command.run([
         'git', 'push', '--force', remote_ref.remote,
-        '{public}:{remote}'.format(
-            public=local_ref.name,
-            remote=remote_branch_ref.name,
-        )])
+        f'{local_ref}:{remote_branch_ref}'])
 
     if not pr:
         return
 
-    pr_url = _review_url(gc, branch, remote_ref, branch.upstream_name)
+    pr_url = _review_url(gc, branch, remote_ref, branch.upstream)
     if pr_url:
         command.run(['xdg-open', pr_url])
 
@@ -125,7 +122,7 @@ def _github_review_url(
 
     return (f'https://github.com/'
             f'{github_m["repo"]}/'
-            f'compare/{upstream.branch_name}...{feature.branch_name}'
+            f'compare/{upstream.branch}...{feature.branch}'
             f'{params}')
 
 

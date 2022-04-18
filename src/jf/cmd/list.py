@@ -41,36 +41,36 @@ class ListLine:
 
     @property
     def public(self) -> str:
-        if self.b.public:
+        if self.b.public_resolved:
             return 'p'
         return '.'
 
     @property
     def review(self) -> str:
-        if self.b.review:
+        if self.b.review_resolved:
             return 'R'
-        if self.b.public:
+        if self.b.public_resolved:
             return 'r'
         return '.'
 
     @property
     def debug(self) -> str:
-        if self.b.debug:
+        if self.b.debug_resolved:
             return 'D'
-        if self.b.ldebug:
+        if self.b.ldebug_resolved:
             return 'd'
         return '.'
 
     @property
     def merged(self) -> str:
         r = '.'
-        if self.b.upstream and self.is_merged_into(self.b.upstream):
+        if self.b.upstream_resolved and self.is_merged_into(self.b.upstream_resolved):
             r = 'U'
-        if self.b.fork and self.is_merged_into(self.b.fork):
+        if self.b.fork_resolved and self.is_merged_into(self.b.fork_resolved):
             r = 'F'
-        if 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs['develop']):
+        if 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('develop')]):
             r = 'D'
-        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs['master']):
+        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('master')]):
             r = 'M'
         return r
 
