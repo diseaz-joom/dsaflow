@@ -69,7 +69,7 @@ def rebase(ctx: click.Context, message: Optional[str], fork: Optional[str]):
     if branch.jflow_version != 1:
         raise UnsupportedJflowVersionError(branch.jflow_version)
 
-    need_publish = bool(branch.public)
+    need_publish = bool(branch.public_resolved)
     if need_publish:
         branch.publish_local_public(msg=message)
 
@@ -80,14 +80,14 @@ def rebase(ctx: click.Context, message: Optional[str], fork: Optional[str]):
         if base_ref.kind != git.Kind.head:
             raise Error(f'Not a local branch: {base_ref.name!r}')
     else:
-        fork_ref = branch.fork
+        fork_ref = branch.fork_resolved
         if fork_ref:
             if fork_ref.kind == git.Kind.head:
                 base_ref = fork_ref
             else:
                 _logger.warning(f'Fork ref {fork_ref.name!r} is not a branch')
         if not base_ref:
-            upstream_ref = branch.upstream
+            upstream_ref = branch.upstream_resolved
             if upstream_ref:
                 if upstream_ref.kind == git.Kind.head:
                     base_ref = upstream_ref
@@ -102,4 +102,4 @@ def rebase(ctx: click.Context, message: Optional[str], fork: Optional[str]):
     ctx.invoke(clean)
 
     if need_publish:
-        branch.publish_local_public(msg=f'Merge {base_ref.branch_name} into {branch.name}')
+        branch.publish_local_public(msg=f'Merge {base_ref.branch} into {branch.name}')

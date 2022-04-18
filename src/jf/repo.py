@@ -109,42 +109,42 @@ class Branch(git.GenericBranch):
         return result
 
     @functools.cached_property
-    def public(self) -> Optional[git.Ref]:
+    def public_resolved(self) -> Optional[git.Ref]:
         ref_name = self.public_name
         if not ref_name:
             return None
         return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
-    def debug(self) -> Optional[git.Ref]:
+    def debug_resolved(self) -> Optional[git.Ref]:
         ref_name = self.debug_name
         if not ref_name:
             return None
         return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
-    def ldebug(self) -> Optional[git.Ref]:
+    def ldebug_resolved(self) -> Optional[git.Ref]:
         ref_name = self.ldebug_name
         if not ref_name:
             return None
         return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
-    def stgit(self) -> Optional[git.Ref]:
+    def stgit_resolved(self) -> Optional[git.Ref]:
         ref_name = self.stgit_name
         if not ref_name:
             return None
         return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
-    def review(self) -> Optional[git.Ref]:
+    def review_resolved(self) -> Optional[git.Ref]:
         ref_name = self.review_name
         if not ref_name:
             return None
         return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
-    def fork(self) -> Optional[git.Ref]:
+    def fork_resolved(self) -> Optional[git.Ref]:
         ref_name = self.fork_name
         if not ref_name:
             return None
@@ -152,13 +152,13 @@ class Branch(git.GenericBranch):
 
     @functools.cached_property
     def fork_branch(self) -> Optional['Branch']:
-        r = self.fork
+        r = self.fork_resolved
         if not r:
             return None
         return self.gc.branch_by_ref.get(r.name, None)
 
     @functools.cached_property
-    def upstream(self) -> Optional[git.Ref]:
+    def upstream_resolved(self) -> Optional[git.Ref]:
         ref_name = self.upstream_name
         if not ref_name:
             return None
@@ -166,13 +166,13 @@ class Branch(git.GenericBranch):
 
     @functools.cached_property
     def upstream_branch(self) -> Optional['Branch']:
-        r = self.upstream
+        r = self.upstream_resolved
         if not r:
             return None
         return self.gc.branch_by_ref.get(r.name, None)
 
     @functools.cached_property
-    def tested(self) -> Optional[git.Ref]:
+    def tested_resolved(self) -> Optional[git.Ref]:
         ref_name = self.tested_name
         if not ref_name:
             return None
@@ -188,51 +188,51 @@ class Branch(git.GenericBranch):
     def publish_local_public(
             self, msg: str = None, force_new=False,
     ) -> Tuple[Optional[git.RefName], Optional[git.RefName]]:
-        if not self.public_branch_name:
+        if not self.public_name or not self.public_name.branch:
             raise Error(f'No public branch for branch {self.name}')
-        if self.name == self.public_branch_name:
+        if self.name == self.public_name.branch:
             return self.public_name, self.review_name
-        if not self.stgit:
+        if not self.stgit_resolved:
             raise NotImplementedError('Not implemented for non-stgit branches')
-        public_ref = self.public
+        public_ref = self.public_resolved
         if force_new and public_ref:
-            command.run(['stg', 'branch', '--delete', '--force', self.public_branch_name])
+            command.run(['stg', 'branch', '--delete', '--force', self.public_name.branch])
             public_ref = None
-        if self.ldebug and (
-            not public_ref or self.gc.is_merged_into(public_ref.sha, self.ldebug.sha)
+        if self.ldebug_resolved and (
+            not public_ref or self.gc.is_merged_into(public_ref.sha, self.ldebug_resolved.sha)
         ):
-            command.run(['git', 'branch', '--force', '--no-track', self.public_branch_name, self.ldebug.name])
+            command.run(['git', 'branch', '--force', '--no-track', self.public_name.branch, self.ldebug_resolved])
 
         cmd = ['stg', 'publish']
         if msg:
             cmd.append(f'--message={msg}')
-        cmd.append(self.public_branch_name)
+        cmd.append(self.public_name.branch)
         command.run(cmd)
         return self.public_name, self.review_name
 
     def publish_local_debug(
             self, msg: str = None, force_new=False,
     ) -> Tuple[Optional[git.RefName], Optional[git.RefName]]:
-        if not self.ldebug_branch_name:
+        if not self.ldebug_name or not self.ldebug_name.branch:
             raise Error(f'No local debug branch for branch {self.name}')
-        if self.name == self.ldebug_branch_name:
+        if self.name == self.ldebug_name.branch:
             return self.ldebug_name, self.debug_name
-        if not self.stgit:
+        if not self.stgit_resolved:
             raise NotImplementedError('Not implemented for non-stgit branches')
-        debug_ref = self.ldebug
+        debug_ref = self.ldebug_resolved
         if force_new:
             if debug_ref:
-                command.run(['stg', 'branch', '--delete', '--force', self.ldebug_branch_name])
+                command.run(['stg', 'branch', '--delete', '--force', self.ldebug_name.branch])
                 debug_ref = None
-        elif self.public and (
-            not debug_ref or self.gc.is_merged_into(debug_ref.sha, self.public.sha)
+        elif self.public_resolved and (
+            not debug_ref or self.gc.is_merged_into(debug_ref.sha, self.public_resolved.sha)
         ):
-            command.run(['git', 'branch', '--force', '--no-track', self.ldebug_branch_name, self.public.name])
+            command.run(['git', 'branch', '--force', '--no-track', self.ldebug_name.branch, self.public_resolved])
 
         cmd = ['stg', 'publish']
         if msg:
             cmd.append(f'--message={msg}')
-        cmd.append(self.ldebug_branch_name)
+        cmd.append(self.ldebug_name.branch)
         command.run(cmd)
         return self.ldebug_name, self.debug_name
 
@@ -366,15 +366,15 @@ class Cache(object):
         matches = []
         prefix = shortcut + '/'
         for r in self.refs_list:
-            if not r.branch_name:
+            if not r.branch:
                 continue
-            if r.branch_name == shortcut:
+            if r.branch == shortcut:
                 return r
-            if r.branch_name.startswith(prefix):
+            if r.branch.startswith(prefix):
                 matches.append(r)
         if not matches:
             return None
-        return max(matches, key=lambda r: (r.branch_name, r.is_remote))
+        return max(matches, key=lambda r: (r.branch, r.is_remote))
 
     @functools.cached_property
     def current_ref(self) -> git.Ref:
