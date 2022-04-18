@@ -62,7 +62,7 @@ def publish(message: str, debug: bool, new: bool, local: bool, pr: bool, non_cle
     if not local_ref:
         return
 
-    if not branch.upstream_name:
+    if not branch.upstream:
         raise Error(f'No upstream for branch {branch.name!r}')
     if not remote_ref:
         raise Error('No remote reference calculated')
@@ -77,7 +77,7 @@ def publish(message: str, debug: bool, new: bool, local: bool, pr: bool, non_cle
     if not pr:
         return
 
-    pr_url = _review_url(gc, branch, remote_ref, branch.upstream_name)
+    pr_url = _review_url(gc, branch, remote_ref, branch.upstream)
     if pr_url:
         command.run(['xdg-open', pr_url])
 

@@ -28,7 +28,7 @@ def jenkins_cmd(branch: str, debug: bool):
         raise Error('HEAD is not a branch')
     b = gc.branches[branch]
 
-    build_name = b.debug_name if debug else b.review_name
+    build_name = b.debug if debug else b.review
     if not build_name:
         return
     url = jenkins.branch_url(build_name.branch)

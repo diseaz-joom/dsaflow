@@ -275,13 +275,13 @@ class GenericBranch:
         return self.cfg.stgit.version.value
 
     @functools.cached_property
-    def stgit_name(self) -> Optional[RefName]:
+    def stgit(self) -> Optional[RefName]:
         if not self.is_stgit:
             return None
         return RefName(self.ref + STGIT_SUFFIX)
 
     @functools.cached_property
-    def public_name(self) -> Optional[RefName]:
+    def public(self) -> Optional[RefName]:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
@@ -292,7 +292,7 @@ class GenericBranch:
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def debug_name(self) -> Optional[RefName]:
+    def debug(self) -> Optional[RefName]:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
@@ -303,7 +303,7 @@ class GenericBranch:
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def ldebug_name(self) -> Optional[RefName]:
+    def ldebug(self) -> Optional[RefName]:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
@@ -314,7 +314,7 @@ class GenericBranch:
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def review_name(self) -> Optional[RefName]:
+    def review(self) -> Optional[RefName]:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
@@ -325,7 +325,7 @@ class GenericBranch:
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def upstream_name(self) -> Optional[RefName]:
+    def upstream(self) -> Optional[RefName]:
         if not self.jflow_version:
             if not self.cfg.merge.value:
                 return None
@@ -338,18 +338,18 @@ class GenericBranch:
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def fork_name(self) -> Optional[RefName]:
+    def fork(self) -> Optional[RefName]:
         if not self.jflow_version:
-            return self.upstream_name
+            return self.upstream
         elif self.jflow_version == 1:
             name = self.cfg.jf.fork.value
             if not name:
-                return self.upstream_name
+                return self.upstream
             return RefName.for_branch(REMOTE_LOCAL, name)
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def tested_name(self) -> Optional[RefName]:
+    def tested(self) -> Optional[RefName]:
         branch_name = self.cfg.jf.tested.value
         if not branch_name:
             return None
@@ -363,17 +363,17 @@ class GenericBranch:
             return True
         if not self.cfg_root.jf.autosync.value:
             return False
-        if not (self.upstream_name and self.upstream_name.is_remote):
+        if not (self.upstream and self.upstream.is_remote):
             return False
         return True
 
     def gen_related_refs(self) -> Generator[RefName, None, None]:
-        if self.public_name and self.public_name != self.ref:
-            yield self.public_name
-        if self.ldebug_name and self.ldebug_name != self.ref:
-            yield self.ldebug_name
-        if self.stgit_name:
-            yield self.stgit_name
+        if self.public and self.public != self.ref:
+            yield self.public
+        if self.ldebug and self.ldebug != self.ref:
+            yield self.ldebug
+        if self.stgit:
+            yield self.stgit
 
 
 def is_workdir_clean():

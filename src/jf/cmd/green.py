@@ -44,10 +44,10 @@ def green(ctx: click.Context, branch: t.Optional[str]):
 
 
 def _green(ctx: click.Context, gc: repo.Cache, branch: repo.Branch):
-    if not branch.tested_name or not branch.tested_name.branch:
+    if not branch.tested or not branch.tested.branch:
         raise Error('No name for "tested" branch')
 
-    green_branch_name = branch.tested_name.branch
+    green_branch_name = branch.tested.branch
     green_ref_name = git.RefName.for_branch(git.REMOTE_LOCAL, green_branch_name)
     green_ref = gc.refs.get(green_ref_name, None)
     green_upstream_ref_name = git.RefName.for_branch(git.REMOTE_ORIGIN, green_branch_name)
