@@ -31,7 +31,7 @@ def sync():
         for b in gc.branches.values():
             if not b.sync:
                 continue
-            upstream = b.upstream
+            upstream = b.upstream_resolved
             if not upstream:
                 continue
             if gc.is_merged_into(upstream.sha, b.ref.sha):
