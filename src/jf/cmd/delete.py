@@ -92,9 +92,9 @@ class Filter:
     def is_merge_status(self, status: str) -> bool:
         all_stats = 'MDFU'
         sts = ''
-        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs['master']):
+        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('master')]):
             sts = all_stats
-        elif 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs['develop']):
+        elif 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('develop')]):
             sts = all_stats[1:]
         elif self.is_merged_into(self.b.fork):
             sts = all_stats[2:]

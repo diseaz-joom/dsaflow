@@ -117,12 +117,12 @@ def start(
     rc['fork'] = fork_ref.branch_name
 
     if fork_ref.is_remote:
-        command.run(['git', 'branch', '--force', fork_ref.branch_name, fork_ref.name])
+        command.run(['git', 'branch', '--force', fork_ref.branch_name, fork_ref])
         bk = gc.cfg.branch[fork_ref.branch_name].jf
         bk.sync.set(True)
         fork_ref = git.RefName.for_branch(git.REMOTE_LOCAL, fork_ref.branch_name)
 
-    command.run(['stg', 'branch', '--create', name, fork_ref.name])
+    command.run(['stg', 'branch', '--create', name, fork_ref])
     command.run(['stg', 'new', '--message=WIP', 'wip'])
 
     bk = gc.cfg.branch[name].jf

@@ -68,9 +68,9 @@ class ListLine:
             r = 'U'
         if self.b.fork and self.is_merged_into(self.b.fork):
             r = 'F'
-        if 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs['develop']):
+        if 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('develop')]):
             r = 'D'
-        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs['master']):
+        if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('master')]):
             r = 'M'
         return r
 

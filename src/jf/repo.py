@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Generator
 
 import collections
 import enum
@@ -102,8 +102,8 @@ class Branch(git.GenericBranch):
         for line in patch_lines:
             mark, patch_name = line.split(' ', 1)
             status = PatchStatus.from_stg_mark(mark)
-            patch_ref = self.gc.refs[patch_prefix + patch_name]
-            patch_log_ref = self.gc.refs[patch_prefix + patch_name + git.PATCH_LOG_SUFFIX]
+            patch_ref = self.gc.refs[git.RefName(patch_prefix + patch_name)]
+            patch_log_ref = self.gc.refs[git.RefName(patch_prefix + patch_name + git.PATCH_LOG_SUFFIX)]
             result.append(PatchInfo(patch_ref, patch_log_ref, status))
 
         return result
@@ -113,42 +113,42 @@ class Branch(git.GenericBranch):
         ref_name = self.public_name
         if not ref_name:
             return None
-        return self.gc.refs.get(ref_name.name, None)
+        return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
     def debug(self) -> Optional[git.Ref]:
         ref_name = self.debug_name
         if not ref_name:
             return None
-        return self.gc.refs.get(ref_name.name, None)
+        return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
     def ldebug(self) -> Optional[git.Ref]:
         ref_name = self.ldebug_name
         if not ref_name:
             return None
-        return self.gc.refs.get(ref_name.name, None)
+        return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
     def stgit(self) -> Optional[git.Ref]:
         ref_name = self.stgit_name
         if not ref_name:
             return None
-        return self.gc.refs.get(ref_name.name, None)
+        return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
     def review(self) -> Optional[git.Ref]:
         ref_name = self.review_name
         if not ref_name:
             return None
-        return self.gc.refs.get(ref_name.name, None)
+        return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
     def fork(self) -> Optional[git.Ref]:
         ref_name = self.fork_name
         if not ref_name:
             return None
-        return self.gc.refs.get(ref_name.name, None)
+        return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
     def fork_branch(self) -> Optional['Branch']:
@@ -162,7 +162,7 @@ class Branch(git.GenericBranch):
         ref_name = self.upstream_name
         if not ref_name:
             return None
-        return self.gc.refs.get(ref_name.name, None)
+        return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
     def upstream_branch(self) -> Optional['Branch']:
@@ -176,14 +176,14 @@ class Branch(git.GenericBranch):
         ref_name = self.tested_name
         if not ref_name:
             return None
-        return self.gc.refs.get(ref_name.name, None)
+        return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
     def tested_branch(self) -> Optional['Branch']:
         r = self.tested_name
         if not r:
             return None
-        return self.gc.branch_by_ref.get(r.name, None)
+        return self.gc.branch_by_ref.get(r, None)
 
     def publish_local_public(
             self, msg: str = None, force_new=False,
@@ -255,11 +255,11 @@ class Cache(object):
         return self.cfg.jf.remote.value or git.REMOTE_ORIGIN
 
     @functools.cached_property
-    def refs_list(self):
+    def refs_list(self) -> List[git.Ref]:
         return list(gen_refs())
 
     @functools.cached_property
-    def refs_abbrevs(self) -> Dict[str, List[git.Ref]]:
+    def refs_abbrevs(self) -> Dict[git.RefName, List[git.Ref]]:
         '''
         Generates dict {abbrevName:[refObjects]} for all refs in repository and all
         valid abbreviations of their names.
@@ -274,7 +274,7 @@ class Cache(object):
         return dict(refs)
 
     @functools.cached_property
-    def refs(self) -> Dict[str, git.Ref]:
+    def refs(self) -> Dict[git.RefName, git.Ref]:
         '''Dictionary name -> ref with all references in the repo.
 
         Includes non-ambiguous reference name abbreviations.
@@ -313,9 +313,9 @@ class Cache(object):
                 refs = []
                 for r in value.split(', '):
                     sname, _, rname = r.partition(' -> ')
-                    rr = rname or sname
+                    rr = git.RefName(rname or sname)
                     if rr.startswith(_TAG_P):
-                        rr = git.TAG_PREFIX + r[len(_TAG_P):]
+                        rr = git.RefName(git.TAG_PREFIX + r[len(_TAG_P):])
                     if rr not in self.refs:
                         _logger.debug(
                             (f'Missing reference: {rr!r} <- {r!r}\n'
@@ -335,7 +335,7 @@ class Cache(object):
         return commits
 
     @functools.cached_property
-    def branch_by_ref(self) -> Dict[str, Branch]:
+    def branch_by_ref(self) -> Dict[git.RefName, Branch]:
         all_heads = {}
         for ref in self.refs_list:
             if ref.kind != git.Kind.head:
@@ -345,7 +345,7 @@ class Cache(object):
         branch_refs = all_heads.copy()
         for k, b in all_heads.items():
             for r in b.gen_related_refs():
-                branch_refs.pop(r.name, None)
+                branch_refs.pop(r, None)
 
         return branch_refs
 
@@ -353,7 +353,7 @@ class Cache(object):
     def branch_by_abbrev(self) -> Dict[str, Branch]:
         result: Dict[str, Branch] = {}
         for b in self.branch_by_ref.values():
-            for abbrev in ref_abbrevs(b.ref.name):
+            for abbrev in ref_abbrevs(b.ref):
                 result[abbrev] = b
         return result
 
@@ -397,41 +397,43 @@ class Cache(object):
         return False
 
 
-def ref_abbrevs(ref_name: str) -> List[str]:
+def ref_abbrevs(ref_name: git.RefName) -> List[git.RefName]:
     '''Builds valid abbreviation for full ref_name.'''
     result = []
     for prefix in (git.HEAD_PREFIX, git.TAG_PREFIX, git.REMOTE_PREFIX, git.GENERIC_PREFIX):
         if ref_name.startswith(prefix):
             short = ref_name[len(prefix):]
             for p in _gen_prefixes(prefix):
-                result.append(p+short)
+                result.append(git.RefName(p+short))
             break
     return result or [ref_name]
 
 
-def _gen_prefixes(full_prefix):
+def _gen_prefixes(full_prefix: str) -> Generator[git.RefName, None, None]:
     '''Generates all possible abbreviated ref prefixes.'''
     p = full_prefix
     while p:
-        yield p
+        yield git.RefName(p)
         p = p[p.find('/')+1:]
-    yield p
+    yield git.RefName(p)
 
 
 _DEREFERENCE_SUFFIX = '^{}'
 
 
-def gen_refs():
+def gen_refs() -> Generator[git.Ref, None, None]:
     '''Generates all refs in repo.'''
     refs_dict = {}
 
     head = 'HEAD'
-    head_sha = command.read(['git', 'rev-parse', head])[0]
+    head_sha = git.Sha(command.read(['git', 'rev-parse', head])[0])
     yield git.Ref(head, head_sha)
 
     suffix_len = len(_DEREFERENCE_SUFFIX)
     for line in command.read(['git', 'show-ref', '--dereference']):
-        sha, _, name = line.partition(' ')
+        sha_str, _, name = line.partition(' ')
+        sha = git.Sha(sha_str)
+
         new_name = name
         deref = name.endswith(_DEREFERENCE_SUFFIX)
         if deref:

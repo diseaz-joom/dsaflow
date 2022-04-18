@@ -72,29 +72,11 @@ BranchName = common.BranchName
 ZeroBranchName = common.ZeroBranchName
 
 
-class Commit(object):
-    def __init__(self, sha: Sha, *, refs: List[str] = None):
-        self.sha = sha
-        self.parents: List[Sha] = []
-        self.children: List[Sha] = []
-        self.refs: List[str] = refs or []
-
-    def __repr__(self) -> str:
-        args = ['sha={s.sha!r}'.format(s=self)]
-        if self.parents:
-            args.append('parents={s.parents!r}'.format(s=self))
-        if self.children:
-            args.append('children={s.children!r}'.format(s=self))
-        if self.refs:
-            args.append('refs={s.refs!r}'.format(s=self))
-        return 'Commit({})'.format(', '.join(args))
-
-
-class RefName:
+class RefName(str):
     '''Reference name manipulations.'''
-    def __init__(self, name: str, sha: Sha = ZeroSha) -> None:
-        self.name = name
-        self.sha = sha
+
+    def __new__(cls, name):
+        return super().__new__(cls, name)
 
     @staticmethod
     def for_branch(remote: str, branch_name: BranchName) -> 'RefName':
@@ -102,41 +84,30 @@ class RefName:
             return RefName(HEAD_PREFIX + branch_name)
         return RefName(REMOTE_PREFIX + remote + '/' + branch_name)
 
-    def __repr__(self) -> str:
-        return f'RefName({self.name!r})'
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, RefName):
-            return False
-        return self.name == other.name
-
-    def __hash__(self) -> int:
-        return hash(self.name)
-
     @property
     def is_valid(self) -> bool:
-        return bool(self.sha)
+        return False
 
     @functools.cached_property
-    def short(self) -> str:
+    def short(self) -> 'RefName':
         '''Returns shortest valid abbreviation for full ref_name.'''
         for prefix in (HEAD_PREFIX, TAG_PREFIX, REMOTE_PREFIX, GENERIC_PREFIX):
-            if self.name.startswith(prefix):
-                return self.name[len(prefix):]
-        return self.name
+            if self.startswith(prefix):
+                return RefName(self[len(prefix):])
+        return self
 
     @functools.cached_property
     def kind(self) -> Kind:
-        if self.name.startswith(HEAD_PREFIX):
-            if self.name.endswith(STGIT_SUFFIX):
+        if self.startswith(HEAD_PREFIX):
+            if self.endswith(STGIT_SUFFIX):
                 return Kind.stgit
             return Kind.head
-        if self.name.startswith(TAG_PREFIX):
+        if self.startswith(TAG_PREFIX):
             return Kind.tag
-        if self.name.startswith(REMOTE_PREFIX):
+        if self.startswith(REMOTE_PREFIX):
             return Kind.remote
-        if self.name.startswith(PATCH_PREFIX):
-            if self.name.endswith(PATCH_LOG_SUFFIX):
+        if self.startswith(PATCH_PREFIX):
+            if self.endswith(PATCH_LOG_SUFFIX):
                 return Kind.patch_log
             return Kind.patch
         return Kind.unknown
@@ -177,12 +148,45 @@ class RefName:
 
 class Ref(RefName):
     '''Represents a reference in repo.'''
+
     def __init__(self, name: str, sha: Sha) -> None:
+        self.sha = sha
+
+    def __new__(cls, name: str, sha: Sha):
         common.check(sha, 'Invalid SHA for reference')
-        super().__init__(name, sha)
+        v = super().__new__(cls, name)
+        v.sha = sha
+        return v
 
     def __repr__(self) -> str:
-        return f'Ref({self.name!r}, {self.sha!r})'
+        r = repr(str(self))
+        return f'Ref({r!r}, {self.sha!r})'
+
+    @property
+    def is_valid(self) -> bool:
+        return True
+
+    @property
+    def name(self) -> RefName:
+        return RefName(self)
+
+
+class Commit(object):
+    def __init__(self, sha: Sha, *, refs: List[RefName] = None):
+        self.sha = sha
+        self.parents: List[Sha] = []
+        self.children: List[Sha] = []
+        self.refs: List[RefName] = refs or []
+
+    def __repr__(self) -> str:
+        args = ['sha={s.sha!r}'.format(s=self)]
+        if self.parents:
+            args.append('parents={s.parents!r}'.format(s=self))
+        if self.children:
+            args.append('children={s.children!r}'.format(s=self))
+        if self.refs:
+            args.append('refs={s.refs!r}'.format(s=self))
+        return 'Commit({})'.format(', '.join(args))
 
 
 class GenericBranch:
@@ -222,7 +226,7 @@ class GenericBranch:
 
     def __init__(self, cfg: config.Root, ref: RefName):
         if not ref.branch:
-            raise Error(f'Invalid branch ref: {ref.name}')
+            raise Error(f'Invalid branch ref: {ref}')
         self.ref = ref
         self.cfg_root = cfg
         self.cfg = cfg.branch[self.name]
@@ -281,7 +285,7 @@ class GenericBranch:
     def stgit_name(self) -> Optional[RefName]:
         if not self.is_stgit:
             return None
-        return RefName(self.ref.name + STGIT_SUFFIX)
+        return RefName(self.ref + STGIT_SUFFIX)
 
     @functools.cached_property
     def public_branch_name(self) -> Optional[BranchName]:
