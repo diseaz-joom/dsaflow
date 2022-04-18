@@ -26,11 +26,11 @@ class Error(Exception):
 @click.option('--merged', type=click.Choice(('U', 'F', 'D', 'M')),
               help='Remove all branches with this status or greater. Status ordering U->F->D->M.')
 @click.argument('branch', nargs=-1)
-def delete(branches: Sequence[str], merged: str):
+def delete(branch: Sequence[str], merged: str):
     '''Remove a branch and all related branches.'''
     gc = repo.Cache()
 
-    input_branches = set(branches)
+    input_branches = set(branch)
     if merged:
         for b in gc.branches.values():
             if not Filter(gc, b).is_merge_status(merged):
