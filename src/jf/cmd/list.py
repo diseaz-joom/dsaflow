@@ -3,11 +3,10 @@
 
 import functools
 
-from dsapy import app
-
 from jf import color
 from jf import git
 from jf import repo
+from jf.cmd import root
 
 
 class Error(Exception):
@@ -91,33 +90,23 @@ class ListLine:
         return ' | ' + self.b.description
 
 
-class List(app.Command):
+@root.group.command('list')
+def list_cmd():
     '''List branches.'''
 
-    name = 'list'
+    gc = repo.Cache()
 
-    def main(self):
-        gc = repo.Cache()
-
-        print('''
+    print('''
 +------- 'j' = controlled by jflow; 's' = controlled by StGit
 |+------ 'r' = has local review branch; 'R' = has remote review
 ||+----- 'd' = has local debug branch; 'D' = has remote debug
 |||+---- merged into: 'U' = upstream; 'F' = fork; 'D' = develop; 'M' = master
 ||||''')
-        branches = list(gc.branches.values())
-        maxlen = max(len(b.name) for b in branches)
-        for b in branches:
-            if b.hidden:
-                continue
-            print('{i.typ}{i.review}{i.debug}{i.merged} {c.W}{b.name}{c.N}{i.name_pad}{i.description}'.format(
-                i=ListLine(gc, b, maxlen=maxlen), b=b, c=color.Colors,
-            ))
-
-
-def _run():
-    app.start()
-
-
-if __name__ == '__main__':
-    _run()
+    branches = list(gc.branches.values())
+    maxlen = max(len(b.name) for b in branches)
+    for b in branches:
+        if b.hidden:
+            continue
+        print('{i.typ}{i.review}{i.debug}{i.merged} {c.W}{b.name}{c.N}{i.name_pad}{i.description}'.format(
+            i=ListLine(gc, b, maxlen=maxlen), b=b, c=color.Colors,
+        ))

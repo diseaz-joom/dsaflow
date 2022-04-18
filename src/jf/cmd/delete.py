@@ -3,15 +3,16 @@
 
 """Remove a branch."""
 
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 import logging
 
-from dsapy import app
+import click
 
 from jf import command
 from jf import git
 from jf import repo
+from jf.cmd import root
 
 
 _logger = logging.getLogger(__name__)
@@ -21,78 +22,63 @@ class Error(Exception):
     '''Base class for errors in the module.'''
 
 
-class Delete(app.Command):
+@root.group.command()
+@click.option('--merged', type=click.Choice(('U', 'F', 'D', 'M')),
+              help='Remove all branches with this status or greater. Status ordering U->F->D->M.')
+@click.argument('branch', nargs=-1)
+def delete(branches: Sequence[str], merged: str):
     '''Remove a branch and all related branches.'''
+    gc = repo.Cache()
 
-    name = 'delete'
-
-    @classmethod
-    def add_arguments(cls, parser):
-        super().add_arguments(parser)
-
-        parser.add_argument(
-            '--merged',
-            choices=('U', 'F', 'D', 'M'),
-            metavar='MERGE-STATUS',
-            default=None,
-            help='Remove all branches with this status or greater. Status ordering U->F->D->M.',
-        )
-        parser.add_argument(
-            'branch',
-            nargs='*',
-            help='Branch to remove',
-        )
-
-    def main(self) -> None:
-        gc = repo.Cache()
-
-        input_branches = set(self.flags.branch)
-        if self.flags.merged:
-            for b in gc.branches.values():
-                if not Filter(gc, b).is_merge_status(self.flags.merged):
-                    continue
-                input_branches.add(b.name)
-
-        branches: List[repo.Branch] = []
-        for arg in input_branches:
-            if arg not in gc.branch_by_abbrev:
-                raise Error(f'Branch {arg!r} not found')
-            b = gc.branch_by_abbrev[arg]
-            if b.name == git.current_branch:
-                _logger.error('Cannot delete current branch')
+    input_branches = set(branches)
+    if merged:
+        for b in gc.branches.values():
+            if not Filter(gc, b).is_merge_status(merged):
                 continue
-            if b.protected:
-                _logger.error(f'Branch {b.name!r} is protected')
-                continue
-            branches.append(b)
+            input_branches.add(b.name)
 
-        for b in branches:
-            if b.jflow_version:
-                refs_list = [b.public, b.ldebug, b.review, b.debug]
-                refs = {r for r in refs_list if r and r != b.ref}
-                for r in refs:
-                    self.remove_ref(r)
-                self.remove_branch(b)
+    bs: List[repo.Branch] = []
+    for arg in input_branches:
+        if arg not in gc.branch_by_abbrev:
+            raise Error(f'Branch {arg!r} not found')
+        b = gc.branch_by_abbrev[arg]
+        if b.name == git.current_branch:
+            _logger.error('Cannot delete current branch')
+            continue
+        if b.protected:
+            _logger.error(f'Branch {b.name!r} is protected')
+            continue
+        bs.append(b)
 
-                command.run(['git', 'config', '--remove-section', gc.cfg.branch[b.name].jf.path])
-            else:
-                self.remove_branch(b)
+    for b in bs:
+        if b.jflow_version:
+            refs_list = [b.public, b.ldebug, b.review, b.debug]
+            refs = {r for r in refs_list if r and r != b.ref}
+            for r in refs:
+                _remove_ref(r)
+            _remove_branch(b)
 
-    def remove_ref(self, ref: Optional[git.RefName]) -> None:
-        if not ref or not ref.branch_name:
-            return
-        if ref.is_remote:
-            if not ref.remote:
-                raise Error(f'No remote for remote ref {ref!r}')
-            command.run(['git', 'push', ref.remote, f':{ref.branch_name}'])
+            command.run(['git', 'config', '--remove-section', gc.cfg.branch[b.name].jf.path])
         else:
-            command.run(['git', 'branch', '--delete', '--force', ref.branch_name])
+            _remove_branch(b)
 
-    def remove_branch(self, b: git.GenericBranch) -> None:
-        if b.is_stgit:
-            command.run(['stg', 'branch', '--delete', '--force', b.name])
-        else:
-            command.run(['git', 'branch', '--delete', '--force', b.name])
+
+def _remove_ref(ref: Optional[git.RefName]) -> None:
+    if not ref or not ref.branch_name:
+        return
+    if ref.is_remote:
+        if not ref.remote:
+            raise Error(f'No remote for remote ref {ref!r}')
+        command.run(['git', 'push', ref.remote, f':{ref.branch_name}'])
+    else:
+        command.run(['git', 'branch', '--delete', '--force', ref.branch_name])
+
+
+def _remove_branch(b: git.GenericBranch) -> None:
+    if b.is_stgit:
+        command.run(['stg', 'branch', '--delete', '--force', b.name])
+    else:
+        command.run(['git', 'branch', '--delete', '--force', b.name])
 
 
 class Filter:

@@ -146,13 +146,11 @@ class RefName:
         return self.kind == Kind.remote
 
     @functools.cached_property
-    def remote(self) -> Optional[str]:
-        if self.kind in (Kind.head, Kind.stgit):
-            return REMOTE_LOCAL
+    def remote(self) -> str:
         if self.kind == Kind.remote:
             remote_name, _, _ = self.short.partition('/')
             return remote_name
-        return None
+        return REMOTE_LOCAL
 
     @property
     def is_branch(self) -> bool:

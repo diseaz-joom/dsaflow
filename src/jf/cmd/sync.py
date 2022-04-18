@@ -5,12 +5,10 @@
 
 import logging
 
-from dsapy import app
-
+from jf import command
 from jf import git
-from jf import green
 from jf import repo
-from jf import sync
+from jf.cmd import root
 
 
 _logger = logging.getLogger(__name__)
@@ -20,40 +18,22 @@ class Error(Exception):
     '''Base class for errors in the module.'''
 
 
-class Green(green.Mixin, app.Command):
-    '''Alternatively update tested branch.'''
-    name = 'green'
+@root.group.command()
+def sync():
+    '''Synchronize from remote.'''
 
-    @classmethod
-    def add_arguments(cls, parser):
-        super().add_arguments(parser)
+    git.check_workdir_is_clean()
 
-        parser.add_argument(
-            '-b', '--branch',
-            default='develop',
-            help='Branch to operate on.',
-        )
-        parser.add_argument(
-            '-t', '--tested',
-            default=None,
-            help='Tested branch.',
-        )
-
-    def main(self):
-        git.check_workdir_is_clean()
+    with git.detach_head():
+        command.run(['git', 'fetch', '--all', '--prune'])
 
         gc = repo.Cache()
-
-        branch_name = git.current_branch
-        if not branch_name:
-            raise Error('HEAD is not a branch')
-        branch = gc.branches[branch_name]
-        self.green(gc, branch)
-
-
-class Sync(sync.Mixin, app.Command):
-    '''Synchronize from remote.'''
-    name = 'sync'
-
-    def main(self):
-        self.sync()
+        for b in gc.branches.values():
+            if not b.sync:
+                continue
+            upstream = b.upstream
+            if not upstream:
+                continue
+            if gc.is_merged_into(upstream.sha, b.ref.sha):
+                continue
+            command.run(['git', 'branch', '--force', '--no-track', b.name, upstream.name])
