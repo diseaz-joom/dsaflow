@@ -7,6 +7,7 @@ from dsapy import app
 
 from jf import color
 from jf import git
+from jf import repo
 
 
 class Error(Exception):
@@ -14,7 +15,7 @@ class Error(Exception):
 
 
 class ListLine:
-    def __init__(self, gc: git.Cache, b: git.Branch, maxlen: int = None):
+    def __init__(self, gc: repo.Cache, b: repo.Branch, maxlen: int = None):
         self.gc = gc
         self.b = b
         self.maxlen = maxlen
@@ -96,7 +97,7 @@ class List(app.Command):
     name = 'list'
 
     def main(self):
-        gc = git.Cache()
+        gc = repo.Cache()
 
         print('''
 +------- 'j' = controlled by jflow; 's' = controlled by StGit

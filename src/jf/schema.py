@@ -7,6 +7,8 @@ import functools
 
 from dsapy.algs import strconv
 
+from jf import common
+
 
 class Error(Exception):
     '''Base for errors in the module.'''
@@ -99,6 +101,7 @@ class _BoolType(ValueType[bool]):
 
 
 StrType = _SimpleType(str)
+BranchType = _SimpleType(common.BranchName)
 IntType = _SimpleType(int)
 BoolType = _BoolType()
 

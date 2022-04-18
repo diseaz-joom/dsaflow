@@ -11,6 +11,7 @@ from dsapy import app
 
 from jf import command
 from jf import git
+from jf import repo
 
 
 _logger = logging.getLogger(__name__)
@@ -71,7 +72,7 @@ class Rebase(CleanMixin, app.Command):
     def main(self) -> None:
         git.check_workdir_is_clean()
 
-        gc = git.Cache()
+        gc = repo.Cache()
 
         branch_name = git.current_branch
         if not branch_name:

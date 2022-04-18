@@ -11,6 +11,7 @@ from dsapy import app
 
 from jf import command
 from jf import git
+from jf import repo
 
 
 _logger = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ class Delete(app.Command):
         )
 
     def main(self) -> None:
-        gc = git.Cache()
+        gc = repo.Cache()
 
         input_branches = set(self.flags.branch)
         if self.flags.merged:
@@ -52,7 +53,7 @@ class Delete(app.Command):
                     continue
                 input_branches.add(b.name)
 
-        branches: List[git.Branch] = []
+        branches: List[repo.Branch] = []
         for arg in input_branches:
             if arg not in gc.branch_by_abbrev:
                 raise Error(f'Branch {arg!r} not found')
@@ -95,7 +96,7 @@ class Delete(app.Command):
 
 
 class Filter:
-    def __init__(self, gc: git.Cache, b: git.Branch) -> None:
+    def __init__(self, gc: repo.Cache, b: repo.Branch) -> None:
         self.gc = gc
         self.b = b
 

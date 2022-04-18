@@ -9,6 +9,7 @@ from dsapy import app
 
 from jf import git
 from jf import green
+from jf import repo
 from jf import sync
 
 
@@ -41,7 +42,7 @@ class Green(green.Mixin, app.Command):
     def main(self):
         git.check_workdir_is_clean()
 
-        gc = git.Cache()
+        gc = repo.Cache()
 
         branch_name = git.current_branch
         if not branch_name:

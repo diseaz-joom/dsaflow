@@ -10,6 +10,7 @@ import logging
 from jf import command
 from jf import git
 from jf import jenkins
+from jf import repo
 
 
 _logger = logging.getLogger(__name__)
@@ -20,18 +21,18 @@ class Error(Exception):
 
 
 class Mixin(jenkins.Mixin):
-    def green_all(self, gc: git.Cache) -> None:
+    def green_all(self, gc: repo.Cache) -> None:
         for branch_name in gc.cfg.jf.default_green.value:
             self.green(gc, gc.branches[branch_name])
 
-    def green(self, gc: git.Cache, branch: git.Branch) -> None:
+    def green(self, gc: repo.Cache, branch: repo.Branch) -> None:
         green_branch_name = branch.tested_branch_name
         if not green_branch_name:
             raise Error('No name for "tested" branch')
 
-        green_ref_name = git.RefName.for_branch(git._REMOTE_LOCAL, green_branch_name).name
+        green_ref_name = git.RefName.for_branch(git.REMOTE_LOCAL, green_branch_name).name
         green_ref = gc.refs.get(green_ref_name, None)
-        green_upstream_ref_name = git.RefName.for_branch(git._REMOTE_ORIGIN, green_branch_name).name
+        green_upstream_ref_name = git.RefName.for_branch(git.REMOTE_ORIGIN, green_branch_name).name
         green_upstream_ref = gc.refs.get(green_upstream_ref_name, None)
 
         branch_ref_name = branch.ref.name
@@ -90,14 +91,14 @@ class Mixin(jenkins.Mixin):
                     green_branch_name,
                 ])
 
-    def green_sync(self, gc: git.Cache, branch_name: str, ref: git.Ref = None) -> Optional[git.Ref]:
-        upstream_ref_name = git.RefName.for_branch(git._REMOTE_ORIGIN, branch_name).name
+    def green_sync(self, gc: repo.Cache, branch_name: git.BranchName, ref: git.Ref = None) -> Optional[git.Ref]:
+        upstream_ref_name = git.RefName.for_branch(git.REMOTE_ORIGIN, branch_name).name
         upstream_ref = gc.refs.get(upstream_ref_name, None)
         if not upstream_ref:
             return ref
 
         if not ref:
-            ref_name = git.RefName.for_branch(git._REMOTE_LOCAL, branch_name).name
+            ref_name = git.RefName.for_branch(git.REMOTE_LOCAL, branch_name).name
             ref = gc.refs.get(ref_name, None)
         else:
             ref_name = ref.name

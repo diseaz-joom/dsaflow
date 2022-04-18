@@ -8,6 +8,7 @@ from dsapy import app
 from jf import command
 from jf import git
 from jf import jenkins
+from jf import repo
 
 
 class Error(Exception):
@@ -35,7 +36,7 @@ class Jenkins(app.Command):
         )
 
     def main(self):
-        gc = git.Cache()
+        gc = repo.Cache()
 
         branch_name = self.flags.branch
         if not branch_name:

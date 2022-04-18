@@ -5,6 +5,7 @@ from dsapy import app
 
 from jf import config
 from jf import git
+from jf import repo
 
 
 class Error(Exception):
@@ -38,7 +39,7 @@ class Config(app.Command):
         )
 
     def main(self):
-        gc = git.Cache()
+        gc = repo.Cache()
         b = gc.branches[self.flags.branch]
         if self.flags.set:
             k = getattr(gc.cfg.branch[b.name].jf, self.flags.set)

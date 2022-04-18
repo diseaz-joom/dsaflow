@@ -1,6 +1,15 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
+from typing import Any, NewType
+
+Sha = NewType('Sha', str)
+ZeroSha = Sha('')
+
+BranchName = NewType('BranchName', str)
+ZeroBranchName = BranchName('')
+
+
 class Struct(dict):
     def __init__(self, *args, **kw):
         super().__init__(*args, **kw)
@@ -24,3 +33,9 @@ class Struct(dict):
             return super().__getattr__(name)
         except (AttributeError, KeyError):
             return None
+
+
+def check(condition: Any, msg: str = ''):
+    if condition:
+        return
+    raise AssertionError(msg)
