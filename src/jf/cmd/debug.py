@@ -5,6 +5,7 @@ from dsapy import app
 
 from jf import config
 from jf import git
+from jf import repo
 
 
 class Error(Exception):
@@ -52,7 +53,7 @@ class Info(app.Command):
         )
 
     def main(self):
-        gc = git.Cache()
+        gc = repo.Cache()
         b = gc.branches[self.flags.branch]
         print('Branch:')
         for k in self._BRANCH_PROPS:
@@ -71,7 +72,7 @@ def commits(flags, **kwargs):
 
     Commits are listed as repr of internal commit objects.
     '''
-    gc = git.Cache()
+    gc = repo.Cache()
     for c in gc.commits.values():
         print(c)
 
@@ -91,7 +92,7 @@ class Resolve(app.Command):
         )
 
     def main(self):
-        gc = git.Cache()
+        gc = repo.Cache()
         r = gc.resolve_shortcut(self.flags.shortcut)
         print(f'Resolved: {r!r}')
 
@@ -109,7 +110,7 @@ class Templates(app.Command):
 @app.main()
 def refs(flags, **kwargs):
     '''(debug) list references.'''
-    gc = git.Cache()
+    gc = repo.Cache()
 
     for ref in gc.refs_list:
         print(f'{ref!r}')
@@ -118,7 +119,7 @@ def refs(flags, **kwargs):
 @app.main(name='refs-abbrevs')
 def refs_abbrevs(**kwargs):
     '''(debug) list reference abbreviations.'''
-    gc = git.Cache()
+    gc = repo.Cache()
 
     for abbrev, refs in gc.refs_abbrevs.items():
         print('{} -> {}'.format(

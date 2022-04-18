@@ -97,7 +97,7 @@ class List(app.Command):
     name = 'list'
 
     def main(self):
-        gc = git.Cache()
+        gc = repo.Cache()
 
         print('''
 +------- 'j' = controlled by jflow; 's' = controlled by StGit

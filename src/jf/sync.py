@@ -8,6 +8,7 @@ import logging
 from jf import command
 from jf import git
 from jf import green
+from jf import repo
 
 
 _logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ class Mixin(green.Mixin):
         with git.detach_head():
             command.run(['git', 'fetch', '--all', '--prune'])
 
-            gc = git.Cache()
+            gc = repo.Cache()
             for b in gc.branches.values():
                 if not b.sync:
                     continue
