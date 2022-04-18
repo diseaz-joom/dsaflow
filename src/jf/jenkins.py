@@ -3,6 +3,8 @@
 
 """Jenkins utils."""
 
+import typing as t
+
 import contextlib
 import functools
 import logging
@@ -10,10 +12,15 @@ import os.path
 import pathlib
 import urllib.parse as up
 
+import click
 import requests
 
 
 _logger = logging.getLogger(__name__)
+
+
+F = t.TypeVar("F", bound=t.Callable[..., t.Any])
+FC = t.TypeVar("FC", bound=t.Union[t.Callable[..., t.Any], click.Command])
 
 
 class Error(Exception):
@@ -44,24 +51,25 @@ def branch_url(branch, api=False):
     return r
 
 
-class Mixin:
-    @classmethod
-    def add_arguments(cls, parser):
-        super().add_arguments(parser)
+def options(f: F) -> F:
+    return (
+        click.option('--jenkins-auth',
+                     help='Path to a file with Jenkins credentials in the form USER:PASSWORD')
+        (f)
+    )
 
-        parser.add_argument(
-            '--jenkins-auth',
-            default=DEFAULT_CRED_PATH,
-            help='Path to a file with Jenkins credentials in the form USER:PASSWORD',
-        )
+
+class Cache:
+    def __init__(self, ctx: click.Context):
+        self.ctx = ctx
 
     @functools.cached_property
-    def jenkins_auth(self):
-        user, _, password = pathlib.Path(self.flags.jenkins_auth).read_text().rstrip().partition(':')
+    def auth(self):
+        user, _, password = pathlib.Path(self.ctx.params['jenkins_auth']).read_text().rstrip().partition(':')
         return (user, password)
 
     @contextlib.contextmanager
-    def jenkins_session(self):
+    def session(self):
         with requests.Session() as ses:
-            ses.auth = self.jenkins_auth
+            ses.auth = self.auth
             yield ses

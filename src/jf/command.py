@@ -1,52 +1,36 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-from typing import Any, List, Sequence
+import typing as t
 
-import argparse
 import locale
 import logging
 import shlex
 import subprocess
 
-from dsapy import app
-from dsapy import flag
-from dsapy import logs
+import click
 
 
-logs
 _logger = logging.getLogger(__name__)
-
 ENCODING: str = locale.getpreferredencoding()
-FULL_RUN = True
-
-
-@flag.argroup('glow.run')
-def _options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        '-n', '--dry-run',
-        action='store_false',
-        dest='full_run',
-        default=FULL_RUN,
-        help='Do not make any changes.',
-    )
-    parser.add_argument(
-        '-f', '--full-run',
-        action='store_true',
-        dest='full_run',
-        default=FULL_RUN,
-        help='Force changes.'
-    )
 
 
 class _globals(object):
-    full_run = FULL_RUN
+    full_run = True
 
 
-@app.onmain
-def _globals_from_flags(**kwargs: Any) -> app.KwArgsGenerator:
-    _globals.full_run = kwargs['flags'].full_run
-    yield kwargs
+F = t.TypeVar("F", bound=t.Callable[..., t.Any])
+FC = t.TypeVar("FC", bound=t.Union[t.Callable[..., t.Any], click.Command])
+
+
+def options(f: F) -> F:
+    f = click.option('-f/-n', '--full-run/--dry-run', default=_globals.full_run,
+                     help='Execute modification commands.')(f)
+    return f
+
+
+def process_options(ctx: click.Context):
+    _globals.full_run = ctx.params['full_run']
 
 
 def full_run() -> bool:
@@ -54,13 +38,13 @@ def full_run() -> bool:
 
 
 def read(
-        args: List[str],
+        args: t.List[str],
         force=True,
         check=True,
         encoding=ENCODING,
         universal_newlines=True,
         **kwargs,
-) -> Sequence[str]:
+) -> t.Sequence[str]:
     p = run(
         args,
         force=force,
@@ -75,7 +59,7 @@ def read(
 
 
 def run(
-        args: List[str],
+        args: t.List[str],
         force=False,
         check=True,
         stdout=None,
@@ -98,7 +82,7 @@ def run(
 
 
 def run_pipe(
-        cmds: List[List[str]],
+        cmds: t.List[t.List[str]],
         force=False,
         stdout=None,
         encoding=ENCODING,
@@ -128,6 +112,5 @@ def run_pipe(
     return subprocess.CompletedProcess(cmds[-1], 0)
 
 
-def _output_lines(output: str) -> List[str]:
+def _output_lines(output: str) -> t.List[str]:
     return output.splitlines()
-    # return [line.rstrip('\n') for line in output]

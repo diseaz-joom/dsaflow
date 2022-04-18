@@ -7,11 +7,12 @@ from typing import Optional
 
 import logging
 
-from dsapy import app
+import click
 
 from jf import command
 from jf import git
 from jf import repo
+from jf.cmd import root
 
 
 _logger = logging.getLogger(__name__)
@@ -32,92 +33,73 @@ class UnsupportedJflowVersionError(Error):
         return super(f'Unsupported Jflow version: {v}')
 
 
-class CleanMixin:
-    def clean(self) -> None:
-        command.run_pipe([
-            ['git', 'ls-files', '--others', '--directory', '--exclude-standard'],
-            ['xargs', 'rm', '--recursive', '--force', '--verbose'],
-        ])
-
-
-class Clean(CleanMixin, app.Command):
+@root.group.command()
+def clean():
     '''Clean garbage files after rebase.'''
 
-    name = 'clean'
+    command.run_pipe([
+        ['git', 'ls-files', '--others', '--directory', '--exclude-standard'],
+        ['xargs', 'rm', '--recursive', '--force', '--verbose'],
+    ])
 
-    def main(self) -> None:
-        self.clean()
 
-
-class Rebase(CleanMixin, app.Command):
+@root.group.command()
+@click.option('-m', '--message',
+              help='Message to commit current changes before rebase')
+@click.option('--fork',
+              help='Use this branch as `fork` parameter')
+@click.pass_context
+def rebase(ctx: click.Context, message: Optional[str], fork: Optional[str]):
     '''Rebase a branch.'''
-    name = 'rebase'
 
-    @classmethod
-    def add_arguments(cls, parser):
-        super().add_arguments(parser)
+    git.check_workdir_is_clean()
 
-        parser.add_argument(
-            '-m', '--message',
-            metavar='MESSAGE',
-            default=None,
-            help='Message to commit current changes before rebase',
-        )
-        parser.add_argument(
-            '--fork',
-            metavar='BRANCH',
-            help='Use this branch as `fork` parameter',
-        )
+    gc = repo.Cache()
 
-    def main(self) -> None:
-        git.check_workdir_is_clean()
+    branch_name = git.current_branch
+    if not branch_name:
+        raise Error('HEAD is not a branch')
+    branch = gc.branches[branch_name]
 
-        gc = repo.Cache()
+    if not branch.is_jflow:
+        raise NotImplementedError('Rebase for non-jflow branches is not implemented yet.')
+    if not branch.is_stgit:
+        raise NotImplementedError('Rebase for non-StGit branches is not implemented yet.')
 
-        branch_name = git.current_branch
-        if not branch_name:
-            raise Error('HEAD is not a branch')
-        branch = gc.branches[branch_name]
+    if branch.jflow_version != 1:
+        raise UnsupportedJflowVersionError(branch.jflow_version)
 
-        if not branch.is_jflow:
-            raise NotImplementedError('Rebase for non-jflow branches is not implemented yet.')
-        if not branch.is_stgit:
-            raise NotImplementedError('Rebase for non-StGit branches is not implemented yet.')
+    need_publish = bool(branch.public)
+    if need_publish:
+        branch.publish_local_public(msg=message)
 
-        if branch.jflow_version != 1:
-            raise UnsupportedJflowVersionError(branch.jflow_version)
+    base_ref: Optional[git.Ref] = None
 
-        need_publish = bool(branch.public)
-        if need_publish:
-            branch.publish_local_public(msg=self.flags.message)
-
-        base_ref: Optional[git.Ref] = None
-
-        if self.flags.fork:
-            base_ref = gc.get_ref(self.flags.fork)
-            if base_ref.kind != git.Kind.head:
-                raise Error(f'Not a local branch: {base_ref.name!r}')
-        else:
-            fork_ref = branch.fork
-            if fork_ref:
-                if fork_ref.kind == git.Kind.head:
-                    base_ref = fork_ref
-                else:
-                    _logger.warning(f'Fork ref {fork_ref.name!r} is not a branch')
-            if not base_ref:
-                upstream_ref = branch.upstream
-                if upstream_ref:
-                    if upstream_ref.kind == git.Kind.head:
-                        base_ref = upstream_ref
-                    else:
-                        _logger.warning(f'Upstream ref {upstream_ref.name!r} is not a branch')
-
+    if fork:
+        base_ref = gc.get_ref(fork)
+        if base_ref.kind != git.Kind.head:
+            raise Error(f'Not a local branch: {base_ref.name!r}')
+    else:
+        fork_ref = branch.fork
+        if fork_ref:
+            if fork_ref.kind == git.Kind.head:
+                base_ref = fork_ref
+            else:
+                _logger.warning(f'Fork ref {fork_ref.name!r} is not a branch')
         if not base_ref:
-            raise Error('What to rebase on?')
+            upstream_ref = branch.upstream
+            if upstream_ref:
+                if upstream_ref.kind == git.Kind.head:
+                    base_ref = upstream_ref
+                else:
+                    _logger.warning(f'Upstream ref {upstream_ref.name!r} is not a branch')
 
-        command.run(['stg', 'rebase', '--merged', base_ref.name])
-        command.run(['git', 'clean', '-d', '--force'])
-        self.clean()
+    if not base_ref:
+        raise Error('What to rebase on?')
 
-        if need_publish:
-            branch.publish_local_public(msg=f'Merge {base_ref.branch_name} into {branch.name}')
+    command.run(['stg', 'rebase', '--merged', base_ref.name])
+    command.run(['git', 'clean', '-d', '--force'])
+    ctx.invoke(clean)
+
+    if need_publish:
+        branch.publish_local_public(msg=f'Merge {base_ref.branch_name} into {branch.name}')
