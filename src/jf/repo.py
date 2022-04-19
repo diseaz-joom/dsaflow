@@ -383,7 +383,7 @@ class Cache(object):
         return self.get_ref(git.current_ref)
 
     def is_merged_into(self, parent_sha: Optional[git.Sha], child_sha: Optional[git.Sha]) -> bool:
-        if not parent_sha:
+        if not parent_sha or not child_sha:
             return False
 
         start = [parent_sha]
