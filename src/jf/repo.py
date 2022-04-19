@@ -110,6 +110,13 @@ class Branch(branch.Generic):
         return result
 
     @functools.cached_property
+    def review_resolved(self) -> Optional[git.Ref]:
+        ref_name = self.review
+        if not ref_name:
+            return None
+        return self.gc.refs.get(ref_name, None)
+
+    @functools.cached_property
     def public_resolved(self) -> Optional[git.Ref]:
         ref_name = self.public
         if not ref_name:
@@ -131,32 +138,11 @@ class Branch(branch.Generic):
         return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
-    def stgit_resolved(self) -> Optional[git.Ref]:
-        ref_name = self.stgit
-        if not ref_name:
-            return None
-        return self.gc.refs.get(ref_name, None)
-
-    @functools.cached_property
-    def review_resolved(self) -> Optional[git.Ref]:
-        ref_name = self.review
-        if not ref_name:
-            return None
-        return self.gc.refs.get(ref_name, None)
-
-    @functools.cached_property
     def fork_resolved(self) -> Optional[git.Ref]:
         ref_name = self.fork
         if not ref_name:
             return None
         return self.gc.refs.get(ref_name, None)
-
-    @functools.cached_property
-    def fork_branch(self) -> Optional['Branch']:
-        r = self.fork_resolved
-        if not r:
-            return None
-        return self.gc.branch_by_ref.get(r.name, None)
 
     @functools.cached_property
     def upstream_resolved(self) -> Optional[git.Ref]:
@@ -166,25 +152,11 @@ class Branch(branch.Generic):
         return self.gc.refs.get(ref_name, None)
 
     @functools.cached_property
-    def upstream_branch(self) -> Optional['Branch']:
-        r = self.upstream_resolved
-        if not r:
-            return None
-        return self.gc.branch_by_ref.get(r.name, None)
-
-    @functools.cached_property
     def tested_resolved(self) -> Optional[git.Ref]:
         ref_name = self.tested
         if not ref_name:
             return None
         return self.gc.refs.get(ref_name, None)
-
-    @functools.cached_property
-    def tested_branch(self) -> Optional['Branch']:
-        r = self.tested
-        if not r:
-            return None
-        return self.gc.branch_by_ref.get(r, None)
 
     def publish_local_public(
             self, msg: str = None, force_new=False,
@@ -193,7 +165,7 @@ class Branch(branch.Generic):
             raise Error(f'No public branch for branch {self.name}')
         if self.name == self.public.branch:
             return self.public, self.review
-        if not self.stgit_resolved:
+        if not self.is_stgit:
             raise NotImplementedError('Not implemented for non-stgit branches')
         public_ref = self.public_resolved
         if force_new and public_ref:
@@ -218,7 +190,7 @@ class Branch(branch.Generic):
             raise Error(f'No local debug branch for branch {self.name}')
         if self.name == self.ldebug.branch:
             return self.ldebug, self.debug
-        if not self.stgit_resolved:
+        if not self.is_stgit:
             raise NotImplementedError('Not implemented for non-stgit branches')
         debug_ref = self.ldebug_resolved
         if force_new:

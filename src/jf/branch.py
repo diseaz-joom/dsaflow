@@ -98,17 +98,24 @@ class Generic:
 
     @property
     def is_stgit(self) -> bool:
-        return bool(self.stgit_version)
-
-    @functools.cached_property
-    def stgit_version(self) -> int:
-        return self.cfg.stgit.version.value
+        return bool(self.cfg.stgit.version.value)
 
     @functools.cached_property
     def stgit(self) -> t.Optional[git.RefName]:
         if not self.is_stgit:
             return None
         return git.RefName(self.ref + git.STGIT_SUFFIX)
+
+    @functools.cached_property
+    def review(self) -> t.Optional[git.RefName]:
+        if not self.jflow_version:
+            return None
+        elif self.jflow_version == 1:
+            bn = self.cfg.jf.review.value
+            if not bn:
+                return None
+            return bn.ref(self.remote)
+        raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
     def public(self) -> t.Optional[git.RefName]:
@@ -141,17 +148,6 @@ class Generic:
             if not bn:
                 return None
             return bn.ref(git.REMOTE_LOCAL)
-        raise UnsupportedJflowVersionError(self.jflow_version)
-
-    @functools.cached_property
-    def review(self) -> t.Optional[git.RefName]:
-        if not self.jflow_version:
-            return None
-        elif self.jflow_version == 1:
-            bn = self.cfg.jf.review.value
-            if not bn:
-                return None
-            return bn.ref(self.remote)
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
