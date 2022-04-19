@@ -69,7 +69,7 @@ def publish(message: str, debug: bool, new: bool, local: bool, pr: bool, non_cle
         raise Error('No remote reference calculated')
     if not remote_ref.branch:
         raise Error(f'Failed to extract branch name from ref {remote_ref}')
-    remote_branch_ref = git.RefName.for_branch(git.REMOTE_LOCAL, remote_ref.branch)
+    remote_branch_ref = remote_ref.branch.ref(git.REMOTE_LOCAL)
 
     command.run([
         'git', 'push', '--force', remote_ref.remote,

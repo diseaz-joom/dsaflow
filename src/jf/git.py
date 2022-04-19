@@ -52,24 +52,24 @@ class Kind(enum.Enum):
     patch_log = enum.auto()
 
 
-Sha = common.Sha
-ZeroSha = common.ZeroSha
-
-BranchName = common.BranchName
-ZeroBranchName = common.ZeroBranchName
+Sha = t.NewType('Sha', str)
+ZeroSha = Sha('')
 
 
-# class BranchName(str):
-#     def __net__(cls, name):
-#         return super().__new__(cls, name)
+class BranchName(str):
+    def __net__(cls, name):
+        return super().__new__(cls, name)
 
-#     def ref(self, remote: str) -> 'RefName':
-#         if not self:
-#             return RefName('')
+    def ref(self, remote: str) -> 'RefName':
+        if not self:
+            return RefName('')
 
-#         if remote == REMOTE_LOCAL:
-#             return RefName(HEAD_PREFIX + self)
-#         return RefName(REMOTE_PREFIX + remote + '/' + self)
+        if remote == REMOTE_LOCAL:
+            return RefName(HEAD_PREFIX + self)
+        return RefName(REMOTE_PREFIX + remote + '/' + self)
+
+
+ZeroBranchName = BranchName('')
 
 
 class RefName(str):
@@ -77,12 +77,6 @@ class RefName(str):
 
     def __new__(cls, name):
         return super().__new__(cls, name)
-
-    @staticmethod
-    def for_branch(remote: str, branch_name: BranchName) -> 'RefName':
-        if remote == REMOTE_LOCAL:
-            return RefName(HEAD_PREFIX + branch_name)
-        return RefName(REMOTE_PREFIX + remote + '/' + branch_name)
 
     @property
     def is_valid(self) -> bool:
