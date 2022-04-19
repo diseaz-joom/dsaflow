@@ -68,13 +68,15 @@ class Generic:
     def __repr__(self):
         return 'GenericBranch({})'.format(self.ref)
 
-    @property
-    def name(self) -> str:
-        return self.ref.short
+    @functools.cached_property
+    def name(self) -> git.BranchName:
+        if not self.ref.branch:
+            raise Error(f'Branch with non-branch reference: {self.ref}')
+        return self.ref.branch
 
-    @property
+    @functools.cached_property
     def remote(self) -> str:
-        return self.cfg.jf.remote.value or self.cfg.jf.remote.value or git.REMOTE_ORIGIN
+        return self.cfg.jf.remote.value or self.cfg_root.jf.remote.value or git.REMOTE_ORIGIN
 
     @functools.cached_property
     def description(self) -> str:
@@ -107,7 +109,27 @@ class Generic:
         return git.RefName(self.ref + git.STGIT_SUFFIX)
 
     @functools.cached_property
-    def review(self) -> t.Optional[git.RefName]:
+    def merge_point(self) -> t.Optional[git.BranchName]:
+        return self.name
+
+    @functools.cached_property
+    def merge_point_remote(self) -> t.Optional[git.BranchName]:
+        return self.merge_point
+
+    @functools.cached_property
+    def fork_point(self) -> t.Optional[git.BranchName]:
+        if not self.jflow_version:
+            if self.tested:
+                return self.tested.branch
+            return self.name
+        elif self.jflow_version == 1:
+            if not self.review_local:
+                return None
+            return self.review_local.branch
+        raise UnsupportedJflowVersionError(self.jflow_version)
+
+    @functools.cached_property
+    def review_remote(self) -> t.Optional[git.RefName]:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
@@ -118,7 +140,7 @@ class Generic:
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def public(self) -> t.Optional[git.RefName]:
+    def review_local(self) -> t.Optional[git.RefName]:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
@@ -128,8 +150,16 @@ class Generic:
             return bn.ref(git.REMOTE_LOCAL)
         raise UnsupportedJflowVersionError(self.jflow_version)
 
+    @property
+    def review(self) -> t.Optional[git.RefName]:
+        return self.review_remote
+
+    @property
+    def public(self) -> t.Optional[git.RefName]:
+        return self.review_local
+
     @functools.cached_property
-    def debug(self) -> t.Optional[git.RefName]:
+    def debug_remote(self) -> t.Optional[git.RefName]:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
@@ -140,7 +170,7 @@ class Generic:
         raise UnsupportedJflowVersionError(self.jflow_version)
 
     @functools.cached_property
-    def ldebug(self) -> t.Optional[git.RefName]:
+    def debug_local(self) -> t.Optional[git.RefName]:
         if not self.jflow_version:
             return None
         elif self.jflow_version == 1:
@@ -149,6 +179,14 @@ class Generic:
                 return None
             return bn.ref(git.REMOTE_LOCAL)
         raise UnsupportedJflowVersionError(self.jflow_version)
+
+    @property
+    def debug(self) -> t.Optional[git.RefName]:
+        return self.debug_remote
+
+    @property
+    def ldebug(self) -> t.Optional[git.RefName]:
+        return self.debug_local
 
     @functools.cached_property
     def upstream(self) -> t.Optional[git.RefName]:

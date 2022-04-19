@@ -23,10 +23,9 @@ class Error(Exception):
     '''Base for errors in the module.'''
 
 
+SHORTCUT_SUFFIX = '*'
+
 _TAG_P = 'tag: '
-
-
-_cache_properties = {'cfg'}
 
 
 class PatchStatus(enum.Enum):
@@ -217,12 +216,6 @@ class Cache(object):
     def __init__(self, cfg: config.Root = None):
         self.cfg = cfg or config.Root()
 
-    def reset(self):
-        for k in self.__dict__.keys():
-            if k in _cache_properties:
-                continue
-            delattr(self, k)
-
     @property
     def remote(self) -> str:
         return self.cfg.jf.remote.value or git.REMOTE_ORIGIN
@@ -336,18 +329,27 @@ class Cache(object):
 
     @functools.lru_cache(maxsize=None)
     def resolve_shortcut(self, shortcut: str) -> Optional[git.Ref]:
-        matches = []
-        prefix = shortcut + '/'
-        for r in self.refs_list:
-            if not r.branch:
-                continue
-            if r.branch == shortcut:
-                return r
-            if r.branch.startswith(prefix):
-                matches.append(r)
+        matches = set()
+        shortcut_ref = git.RefName(shortcut)
+
+        if shortcut.endswith(SHORTCUT_SUFFIX):
+            prefix = shortcut[:-len(SHORTCUT_SUFFIX)]
+            for r in self.refs_list:
+                if not r.branch:
+                    continue
+                if r.branch.startswith(prefix):
+                    matches.add(r)
+        else:
+            matches.update(self.refs_abbrevs.get(shortcut_ref, []))
+            for r in self.refs_list:
+                if not r.branch:
+                    continue
+                if r.branch == shortcut:
+                    matches.add(r)
+
         if not matches:
             return None
-        return max(matches, key=lambda r: (r.branch, r.is_remote))
+        return max(matches, key=lambda r: (r.branch, not r.is_remote))
 
     @functools.cached_property
     def current_ref(self) -> git.Ref:

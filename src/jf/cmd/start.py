@@ -3,10 +3,9 @@
 
 """Command to start a new branch."""
 
-from typing import Dict, Optional
-
 import collections
 import logging
+import typing as t
 
 import click
 
@@ -32,23 +31,23 @@ class Error(Exception):
               help='Use this branch as `upstream` parameter')
 @click.option('--fork',
               help='Use this branch as `fork` parameter')
-@click.option('--lreview',
-              help='Use this name for local review branch')
 @click.option('--review',
               help='Use this name for remote review branch')
-@click.option('--ldebug',
-              help='Use this name for local debug branch')
+@click.option('--review-local',
+              help='Use this name for local review branch')
 @click.option('--debug',
               help='Use this name for remote debug branch')
+@click.option('--debug-local',
+              help='Use this name for local debug branch')
 def start(
         name: str,
-        description: Optional[str],
-        upstream: Optional[str],
-        fork: Optional[str],
-        lreview: Optional[str],
-        review: Optional[str],
-        ldebug: Optional[str],
-        debug: Optional[str],
+        description: t.Optional[str],
+        upstream: t.Optional[str],
+        fork: t.Optional[str],
+        review: t.Optional[str],
+        review_local: t.Optional[str],
+        debug: t.Optional[str],
+        debug_local: t.Optional[str],
 ):
     '''Starts new branch NAME.'''
 
@@ -56,21 +55,23 @@ def start(
 
     gc = repo.Cache()
 
+    # Find all prefixes that match new branch
     matches = []
     for t in gc.cfg.jf.template.keys:
         if (
             name.startswith(t)
-            and gc.cfg.jf.template[t].version.value == 1
+            and gc.cfg.jf.template[t].version.value
         ):
             matches.append(t)
     if not matches:
         raise Error('Prefix not found')
     matches.sort(key=len)
 
-    prefix = matches[-1]
-    base = name[len(prefix):]
+    prefix = matches[-1] # Longest prefix
+    base = name[len(prefix):] # Base name with prefix stripped
 
-    tc: Dict[str, str] = collections.defaultdict(
+    # Build config from templates matched
+    template_cfg: t.Dict[str, str] = collections.defaultdict(
         lambda: '',
         lreview_prefix=prefix,
         review_prefix=prefix,
@@ -84,37 +85,42 @@ def start(
             kk = getattr(tk, k)
             if kk.value is None:
                 continue
-            tc[k] = kk.value
+            template_cfg[k] = kk.value
 
     for t, s in _defaults:
-        if t not in tc and s in tc:
-            tc[t] = tc[s]
+        if t not in template_cfg and s in template_cfg:
+            template_cfg[t] = template_cfg[s]
 
-    rc: Dict[str, Optional[str]] = {
-        'version': tc.get('version', None),
-        'lreview': lreview or f'{tc["lreview_prefix"]}{base}{tc["lreview_suffix"]}',
-        'review': review or f'{tc["review_prefix"]}{base}{tc["review_suffix"]}',
-        'ldebug': ldebug or f'{tc["ldebug_prefix"]}{base}{tc["ldebug_suffix"]}',
-        'debug': debug or f'{tc["debug_prefix"]}{base}{tc["debug_suffix"]}',
-        'debug_prefix': tc['debug_prefix'],
-        'debug_suffix': tc['debug_suffix'],
+    # Build branch config
+    branch_cfg: t.Dict[str, t.Optional[str]] = {
+        'version': template_cfg.get('version', None),
+        'lreview': review_local or f'{template_cfg["lreview_prefix"]}{base}{template_cfg["lreview_suffix"]}',
+        'review': review or f'{template_cfg["review_prefix"]}{base}{template_cfg["review_suffix"]}',
+        'ldebug': debug_local or f'{template_cfg["ldebug_prefix"]}{base}{template_cfg["ldebug_suffix"]}',
+        'debug': debug or f'{template_cfg["debug_prefix"]}{base}{template_cfg["debug_suffix"]}',
+        'debug_prefix': template_cfg['debug_prefix'],
+        'debug_suffix': template_cfg['debug_suffix'],
     }
 
-    upstream_shortcut = upstream or tc['upstream']
+    upstream_shortcut = upstream or template_cfg['upstream']
     upstream_ref = gc.resolve_shortcut(upstream_shortcut)
     if not upstream_ref:
-        raise Error(f'Cannot detect upstream for {upstream_shortcut!r}')
+        raise Error(f'Cannot resolve {upstream_shortcut!r}')
     if not upstream_ref.branch:
-        raise Error('Unsupported ref kind: {upstream_ref.name!r}')
-    rc['upstream'] = upstream_ref.branch
+        raise Error('Not a branch: {upstream_ref.name!r}')
+    branch_cfg['upstream'] = upstream_ref.branch
+    if upstream_ref != upstream_shortcut:
+        branch_cfg['upstream_shortcut'] = upstream_shortcut
 
-    fork_shortcut = fork or tc['fork']
-    fork_ref: Optional[git.RefName] = gc.resolve_shortcut(fork_shortcut)
+    fork_shortcut = fork or template_cfg['fork'] or gc.cfg.branch[upstream_ref.branch].jf.fork_from
+    fork_ref: t.Optional[git.RefName] = gc.resolve_shortcut(fork_shortcut)
     if not fork_ref:
         raise Error(f'Cannot detect fork for {fork_shortcut!r}')
     if not fork_ref.branch:
         raise Error('Unsupported ref kind: {fork_ref.name!r}')
-    rc['fork'] = fork_ref.branch
+    branch_cfg['fork'] = fork_ref.branch
+    if fork_ref != fork_shortcut:
+        branch_cfg['fork_shortcut'] = fork_shortcut
 
     if fork_ref.is_remote:
         if not fork_ref.branch:
@@ -128,7 +134,7 @@ def start(
     command.run(['stg', 'new', '--message=WIP', 'wip'])
 
     bk = gc.cfg.branch[name].jf
-    for kk, kv in rc.items():
+    for kk, kv in branch_cfg.items():
         if not kv:
             continue
         getattr(bk, kk).set(kv)
