@@ -9,6 +9,7 @@ import logging
 
 import click
 
+from jf import branch
 from jf import command
 from jf import git
 from jf import repo
@@ -74,7 +75,7 @@ def _remove_ref(ref: Optional[git.RefName]) -> None:
         command.run(['git', 'branch', '--delete', '--force', ref.branch])
 
 
-def _remove_branch(b: git.GenericBranch) -> None:
+def _remove_branch(b: branch.Generic) -> None:
     if b.is_stgit:
         command.run(['stg', 'branch', '--delete', '--force', b.name])
     else:

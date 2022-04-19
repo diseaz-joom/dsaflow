@@ -10,6 +10,7 @@ import logging
 
 from dsapy.algs import bdfs
 
+from jf import branch
 from jf import command
 from jf import config
 from jf import git
@@ -69,7 +70,7 @@ class PatchInfo(object):
         return self.status != PatchStatus.hidden
 
 
-class Branch(git.GenericBranch):
+class Branch(branch.Generic):
     def __init__(
             self,
             gc: 'Cache',
@@ -83,8 +84,8 @@ class Branch(git.GenericBranch):
         return 'Branch({})'.format(self.fullref)
 
     @functools.cached_property
-    def generic(self) -> git.GenericBranch:
-        return git.GenericBranch(self.gc.cfg, self.ref)
+    def generic(self) -> branch.Generic:
+        return branch.Generic(self.gc.cfg, self.ref)
 
     @property
     def sha(self) -> git.Sha:

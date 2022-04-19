@@ -1,13 +1,7 @@
 #!/usr/bin/python3
 # -*- mode: python; coding: utf-8 -*-
 
-from typing import Any, NewType
-
-Sha = NewType('Sha', str)
-ZeroSha = Sha('')
-
-BranchName = NewType('BranchName', str)
-ZeroBranchName = BranchName('')
+import typing as t
 
 
 class Struct(dict):
@@ -35,7 +29,7 @@ class Struct(dict):
             return None
 
 
-def check(condition: Any, msg: str = ''):
+def check(condition: t.Any, msg: str = ''):
     if condition:
         return
     raise AssertionError(msg)

@@ -6,7 +6,7 @@ from typing import List, Dict, Optional, Generator, Tuple
 import collections
 
 from jf import command
-from jf import common
+from jf import git
 from jf import schema
 
 
@@ -68,8 +68,8 @@ class JfBranchCfg(schema.SectionCfg):
     version = schema.Value(schema.IntType, ['version'], default=0)
     remote = schema.MaybeValue(schema.StrType, ['remote-name'])
 
-    upstream = schema.Value(schema.BranchType, ['upstream'], common.ZeroBranchName)
-    fork = schema.Value(schema.BranchType, ['fork'], common.ZeroBranchName)
+    upstream = schema.Value(schema.BranchType, ['upstream'], git.ZeroBranchName)
+    fork = schema.Value(schema.BranchType, ['fork'], git.ZeroBranchName)
 
     ldebug = schema.MaybeValue(schema.BranchType, ['ldebug'])
     debug = schema.MaybeValue(schema.BranchType, ['debug'])

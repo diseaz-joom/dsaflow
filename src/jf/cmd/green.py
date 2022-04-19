@@ -48,9 +48,9 @@ def _green(ctx: click.Context, gc: repo.Cache, branch: repo.Branch):
         raise Error('No name for "tested" branch')
 
     green_branch_name = branch.tested.branch
-    green_ref_name = git.RefName.for_branch(git.REMOTE_LOCAL, green_branch_name)
+    green_ref_name = green_branch_name.ref(git.REMOTE_LOCAL)
     green_ref = gc.refs.get(green_ref_name, None)
-    green_upstream_ref_name = git.RefName.for_branch(git.REMOTE_ORIGIN, green_branch_name)
+    green_upstream_ref_name = green_branch_name.ref(git.REMOTE_ORIGIN)
     green_upstream_ref = gc.refs.get(green_upstream_ref_name, None)
 
     if branch.ref == green_upstream_ref_name:
@@ -110,13 +110,13 @@ def _green(ctx: click.Context, gc: repo.Cache, branch: repo.Branch):
 
 
 def _green_sync(gc: repo.Cache, branch_name: str, ref: git.Ref = None) -> t.Optional[git.Ref]:
-    upstream_ref_name = git.RefName.for_branch(git.REMOTE_ORIGIN, git.BranchName(branch_name))
+    upstream_ref_name = git.BranchName(branch_name).ref(git.REMOTE_ORIGIN)
     upstream_ref = gc.refs.get(upstream_ref_name, None)
     if not upstream_ref:
         return ref
 
     if not ref:
-        ref_name = git.RefName.for_branch(git.REMOTE_LOCAL, git.BranchName(branch_name))
+        ref_name = git.BranchName(branch_name).ref(git.REMOTE_LOCAL)
         ref = gc.refs.get(ref_name, None)
     else:
         ref_name = ref.name

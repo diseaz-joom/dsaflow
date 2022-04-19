@@ -7,7 +7,7 @@ import functools
 
 from dsapy.algs import strconv
 
-from jf import common
+from jf import git
 
 
 class Error(Exception):
@@ -101,7 +101,7 @@ class _BoolType(ValueType[bool]):
 
 
 StrType = _SimpleType(str)
-BranchType = _SimpleType(common.BranchName)
+BranchType = _SimpleType(git.BranchName)
 IntType = _SimpleType(int)
 BoolType = _BoolType()
 

@@ -11,6 +11,7 @@ import urllib.parse
 
 import click
 
+from jf import branch
 from jf import command
 from jf import git
 from jf import repo
@@ -68,7 +69,7 @@ def publish(message: str, debug: bool, new: bool, local: bool, pr: bool, non_cle
         raise Error('No remote reference calculated')
     if not remote_ref.branch:
         raise Error(f'Failed to extract branch name from ref {remote_ref}')
-    remote_branch_ref = git.RefName.for_branch(git.REMOTE_LOCAL, remote_ref.branch)
+    remote_branch_ref = remote_ref.branch.ref(git.REMOTE_LOCAL)
 
     command.run([
         'git', 'push', '--force', remote_ref.remote,
@@ -88,7 +89,7 @@ _FIX_RE = re.compile('\\[fix:(?P<issue>[^\x5D]+)\\]', re.I)
 
 def _github_review_url(
         remote_url: str,
-        branch: git.GenericBranch,
+        branch: branch.Generic,
         feature: git.RefName,
         upstream: git.RefName,
 ) -> Optional[str]:
@@ -128,7 +129,7 @@ def _github_review_url(
 
 def _review_url(
         gc: repo.Cache,
-        branch: git.GenericBranch,
+        branch: branch.Generic,
         feature: git.RefName,
         upstream: git.RefName,
 ) -> Optional[str]:
