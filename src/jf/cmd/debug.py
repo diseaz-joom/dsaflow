@@ -25,15 +25,15 @@ def info(branch):
     '''Display branch info.'''
     gc = repo.Cache()
     b = gc.branches[branch]
-    print('Branch:')
+    click.echo(f'Branch: {b.ref!r}')
     for k in _BRANCH_PROPS:
         kv = getattr(b, k)
-        print(f'  {k}: {kv!r}')
+        click.echo(f'  {k}: {kv!r}')
     bk = gc.cfg.branch[b.name].jf
     print(f'Jflow config ({bk.path}):')
     for k in config.JfBranchCfg.KEYS:
         kk = getattr(bk, k)
-        print(f'  {k}: {kk.value!r}')
+        click.echo(f'  {k}: {kk.value!r}')
 
 
 _BRANCH_PROPS = [
@@ -41,23 +41,23 @@ _BRANCH_PROPS = [
     'remote',
     'is_jflow',
     'is_stgit',
-    'upstream_name',
     'upstream',
-    'fork_name',
+    'upstream_resolved',
     'fork',
-    'ldebug_name',
+    'fork_resolved',
     'ldebug',
-    'debug_name',
+    'ldebug_resolved',
     'debug',
-    'public_name',
+    'debug_resolved',
     'public',
-    'review_name',
+    'public_resolved',
     'review',
+    'review_resolved',
+    'tested',
+    'tested_resolved',
     'hidden',
     'protected',
     'sync',
-    'tested_branch_name',
-    'tested',
 ]
 
 
@@ -92,19 +92,25 @@ def templates():
 
 
 @debug.command()
-def refs(flags, **kwargs):
+def refs():
     '''List references.'''
 
-    gc = git.Cache()
+    gc = repo.Cache()
     for ref in gc.refs_list:
         print(f'{ref!r}')
+
+
+@debug.command()
+def gen_refs():
+    for r in repo.gen_refs():
+        click.echo(f'{r!r}')
 
 
 @debug.command()
 def refs_abbrevs():
     '''List reference abbreviations.'''
 
-    gc = git.Cache()
+    gc = repo.Cache()
     for abbrev, refs in gc.refs_abbrevs.items():
         print('{} -> {}'.format(
             abbrev,
