@@ -109,7 +109,7 @@ def start(
     if not upstream_ref.branch:
         raise Error('Not a branch: {upstream_ref.name!r}')
     branch_cfg['upstream'] = upstream_ref.branch
-    if upstream_ref != upstream_shortcut:
+    if upstream_ref.branch != upstream_shortcut:
         branch_cfg['upstream_shortcut'] = upstream_shortcut
 
     fork_shortcut = fork or template_cfg['fork'] or gc.cfg.branch[upstream_ref.branch].jf.fork_from.value
@@ -119,7 +119,7 @@ def start(
     if not fork_ref.branch:
         raise Error('Unsupported ref kind: {fork_ref.name!r}')
     branch_cfg['fork'] = fork_ref.branch
-    if fork_ref != fork_shortcut:
+    if fork_ref.branch != fork_shortcut:
         branch_cfg['fork_shortcut'] = fork_shortcut
 
     if fork_ref.is_remote:
