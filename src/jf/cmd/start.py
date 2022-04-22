@@ -57,18 +57,18 @@ def start(
 
     # Find all prefixes that match new branch
     matches = []
-    for t in gc.cfg.jf.template.keys:
+    for k in gc.cfg.jf.template.keys:
         if (
-            name.startswith(t)
-            and gc.cfg.jf.template[t].version.value
+            name.startswith(k)
+            and gc.cfg.jf.template[k].version.value
         ):
-            matches.append(t)
+            matches.append(k)
     if not matches:
         raise Error('Prefix not found')
     matches.sort(key=len)
 
-    prefix = matches[-1] # Longest prefix
-    base = name[len(prefix):] # Base name with prefix stripped
+    prefix = matches[-1]  # Longest prefix
+    base = name[len(prefix):]  # Base name with prefix stripped
 
     # Build config from templates matched
     template_cfg: t.Dict[str, str] = collections.defaultdict(
@@ -79,17 +79,17 @@ def start(
         debug_prefix=prefix,
     )
 
-    for t in matches:
-        tk = gc.cfg.jf.template[t]
+    for m in matches:
+        tk = gc.cfg.jf.template[m]
         for k in config.JfTemplateCfg.KEYS:
             kk = getattr(tk, k)
             if kk.value is None:
                 continue
             template_cfg[k] = kk.value
 
-    for t, s in _defaults:
-        if t not in template_cfg and s in template_cfg:
-            template_cfg[t] = template_cfg[s]
+    for d, s in _defaults:
+        if d not in template_cfg and s in template_cfg:
+            template_cfg[d] = template_cfg[s]
 
     # Build branch config
     branch_cfg: t.Dict[str, t.Optional[str]] = {
@@ -112,7 +112,7 @@ def start(
     if upstream_ref != upstream_shortcut:
         branch_cfg['upstream_shortcut'] = upstream_shortcut
 
-    fork_shortcut = fork or template_cfg['fork'] or gc.cfg.branch[upstream_ref.branch].jf.fork_from
+    fork_shortcut = fork or template_cfg['fork'] or gc.cfg.branch[upstream_ref.branch].jf.fork_from.value
     fork_ref: t.Optional[git.RefName] = gc.resolve_shortcut(fork_shortcut)
     if not fork_ref:
         raise Error(f'Cannot detect fork for {fork_shortcut!r}')
