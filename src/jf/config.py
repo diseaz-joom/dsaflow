@@ -32,8 +32,8 @@ class JfTemplateCfg(schema.SectionCfg):
     upstream = schema.MaybeValue(schema.StrType, ['upstream'])
     fork = schema.MaybeValue(schema.StrType, ['fork'])
 
-    ldebug_prefix = schema.MaybeValue(schema.StrType, ['ldebug-prefix'])
-    ldebug_suffix = schema.MaybeValue(schema.StrType, ['ldebug-suffix'])
+    ldebug_prefix = schema.MaybeValue(schema.StrType, ['debug-local-prefix'])
+    ldebug_suffix = schema.MaybeValue(schema.StrType, ['debug-local-suffix'])
     debug_prefix = schema.MaybeValue(schema.StrType, ['debug-prefix'])
     debug_suffix = schema.MaybeValue(schema.StrType, ['debug-suffix'])
 
@@ -69,7 +69,9 @@ class JfBranchCfg(schema.SectionCfg):
     remote = schema.MaybeValue(schema.StrType, ['remote-name'])
 
     upstream = schema.Value(schema.BranchType, ['upstream'], git.ZeroBranchName)
+    upstream_shortcut = schema.MaybeValue(schema.StrType, ['upstream-shortcut'])
     fork = schema.Value(schema.BranchType, ['fork'], git.ZeroBranchName)
+    fork_shortcut = schema.MaybeValue(schema.StrType, ['fork-shortcut'])
 
     ldebug = schema.MaybeValue(schema.BranchType, ['ldebug'])
     debug = schema.MaybeValue(schema.BranchType, ['debug'])
@@ -85,6 +87,7 @@ class JfBranchCfg(schema.SectionCfg):
     protected = schema.Value(schema.BoolType, ['protected'], default=False)
     sync = schema.Value(schema.BoolType, ['sync'], default=False)
 
+    fork_from = schema.MaybeValue(schema.BranchType, ['fork-from'])
     tested = schema.MaybeValue(schema.BranchType, ['tested'])
 
 

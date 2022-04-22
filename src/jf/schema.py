@@ -191,7 +191,11 @@ _NOT_FOUND = object()
 TCacher = TypeVar('TCacher', bound='Cacher')
 
 
-class Cacher(Generic[TCacher, TValue]):
+class SchemaField:
+    '''Base class to indicate schema fields.'''
+
+
+class Cacher(Generic[TCacher, TValue], SchemaField):
     def __init__(self: TCacher) -> None:
         self.attrname = ''
 
@@ -200,7 +204,7 @@ class Cacher(Generic[TCacher, TValue]):
             self.attrname = name
         elif name != self.attrname:
             raise TypeError(
-                "Cannot assign the same cached_property to two different names "
+                "Cannot assign the same Cacher to two different names "
                 f"({self.attrname!r} and {name!r})."
             )
 

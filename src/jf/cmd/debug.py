@@ -79,7 +79,7 @@ def resolve(shortcut):
 
     gc = repo.Cache()
     r = gc.resolve_shortcut(shortcut)
-    print(f'Resolved: {r!r}')
+    click.echo(r)
 
 
 @debug.command()
