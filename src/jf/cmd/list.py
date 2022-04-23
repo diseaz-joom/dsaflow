@@ -4,6 +4,8 @@
 import functools
 import typing as t
 
+import click
+
 from jf import color
 from jf import git
 from jf import repo
@@ -22,6 +24,13 @@ class ListLine:
         self.gc = gc
         self.b = b
         self.maxlen = maxlen
+        self.merged
+
+    @property
+    def current(self) -> str:
+        if self.b.ref == git.current_ref:
+            return '>'
+        return ' '
 
     @property
     def typ(self) -> str:
@@ -32,21 +41,11 @@ class ListLine:
         return '.'
 
     @property
-    def jflow(self) -> str:
-        return 'j' if self.b.is_jflow else '.'
-
-    @property
-    def stgit(self) -> str:
-        return 's' if self.b.is_stgit else '.'
-
-    @functools.lru_cache(maxsize=None)
-    def is_merged_into(self, m: t.Optional[git.Ref]) -> bool:
-        return bool(m and m.is_valid and self.gc.is_merged_into(self.b.sha, m.sha))
-
-    @property
-    def public(self) -> str:
-        if self.b.public_resolved:
-            return 'p'
+    def debug(self) -> str:
+        if self.b.debug_resolved and self.b.ref != self.b.debug_resolved:
+            return 'D'
+        if self.b.ldebug_resolved and self.b.ref != self.b.ldebug_resolved:
+            return 'd'
         return '.'
 
     @property
@@ -55,14 +54,6 @@ class ListLine:
             return 'R'
         if self.b.public_resolved and self.b.ref != self.b.public_resolved:
             return 'r'
-        return '.'
-
-    @property
-    def debug(self) -> str:
-        if self.b.debug_resolved and self.b.ref != self.b.debug_resolved:
-            return 'D'
-        if self.b.ldebug_resolved and self.b.ref != self.b.ldebug_resolved:
-            return 'd'
         return '.'
 
     @property
@@ -95,24 +86,43 @@ class ListLine:
             return ''
         return ' | ' + self.b.description
 
+    @property
+    def jflow(self) -> str:
+        return 'j' if self.b.is_jflow else '.'
+
+    @property
+    def stgit(self) -> str:
+        return 's' if self.b.is_stgit else '.'
+
+    @functools.lru_cache(maxsize=None)
+    def is_merged_into(self, m: t.Optional[git.Ref]) -> bool:
+        return bool(m and m.is_valid and self.gc.is_merged_into(self.b.sha, m.sha))
+
+    @property
+    def public(self) -> str:
+        if self.b.public_resolved:
+            return 'p'
+        return '.'
+
 
 @root.group.command('list')
-def list_cmd():
+@click.option('-a', '--all', is_flag=True, default=False,
+              help='Show all branches, including hidden')
+def list_cmd(all):
     '''List branches.'''
 
     gc = repo.Cache()
 
-    print('''
-+------- 'j' = controlled by jflow; 's' = controlled by StGit
-|+------ 'r' = has local review branch; 'R' = has remote review
-||+----- 'd' = has local debug branch; 'D' = has remote debug
-|||+---- merged into: 'U' = upstream; 'F' = fork; 'D' = develop; 'M' = master
-||||''')
     branches = list(gc.branches.values())
     maxlen = max(len(b.name) for b in branches)
-    for b in branches:
-        if b.hidden:
-            continue
-        print('{i.typ}{i.review}{i.debug}{i.merged} {c.W}{b.name}{c.N}{i.name_pad}{i.description}'.format(
-            i=ListLine(gc, b, maxlen=maxlen), b=b, c=color.Colors,
+    lines = [ListLine(gc, b, maxlen=maxlen) for b in branches if all or not b.hidden]
+    print('''
+ +------- 'j' = controlled by jflow; 's' = controlled by StGit
+ |+------ 'd' = has local debug branch; 'D' = has remote debug
+ ||+----- 'r' = has local review branch; 'R' = has remote review
+ |||+---- merged into: 'U' = upstream; 'F' = fork; 'D' = develop; 'M' = master
+ ||||'''.lstrip('\n'))
+    for line in lines:
+        print('{i.current}{i.typ}{i.debug}{i.review}{i.merged} {c.W}{i.b.name}{c.N}{i.name_pad}{i.description}'.format(
+            i=line, c=color.Colors,
         ))
