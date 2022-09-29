@@ -46,7 +46,7 @@ _context_settings = {
 @command.options
 @click.pass_context
 def group(ctx: click.Context, log_level: str, log_format: str, **kwargs):
-    '''Sample tool.'''
+    '''Tool to support a specific git flow flavour.'''
 
     logging.basicConfig(
         level=_log_levels[log_level],
