@@ -60,7 +60,7 @@ _NAME_TO_PROP = {
 @root.group.command('name')
 @click.option('-b', '--branch', default=git.current_branch, help='Branch to operate on')
 @click.option('-f', '--format', default='full', type=click.Choice(['full', 'short', 'branch', 'remote']), help='Representation to print')
-@click.argument('name', type=click.Choice(_NAME_TO_PROP.keys()))
+@click.argument('name', type=click.Choice(list(_NAME_TO_PROP.keys())))
 def name(branch, format, name):
     '''Display various names for related branches.'''
     gc = repo.Cache()

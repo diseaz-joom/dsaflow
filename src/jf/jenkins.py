@@ -51,7 +51,7 @@ def branch_url(branch, api=False):
     return r
 
 
-def options(f: F) -> F:
+def options(f: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
     return (
         click.option('--jenkins-auth',
                      help='Path to a file with Jenkins credentials in the form USER:PASSWORD')
