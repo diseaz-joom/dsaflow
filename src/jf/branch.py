@@ -131,7 +131,9 @@ class Generic:
     @functools.cached_property
     def review_remote(self) -> t.Optional[git.RefName]:
         if not self.jflow_version:
-            return None
+            if self.ref.kind == git.Kind.remote:
+                return self.ref
+            return self.name.ref(self.remote)
         elif self.jflow_version == 1:
             bn = self.cfg.jf.review.value
             if not bn:

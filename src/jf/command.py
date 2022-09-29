@@ -23,7 +23,7 @@ F = t.TypeVar("F", bound=t.Callable[..., t.Any])
 FC = t.TypeVar("FC", bound=t.Union[t.Callable[..., t.Any], click.Command])
 
 
-def options(f: F) -> F:
+def options(f: t.Callable[..., t.Any]) -> t.Callable[..., t.Any]:
     f = click.option('-f/-n', '--full-run/--dry-run', default=_globals.full_run,
                      help='Execute modification commands.')(f)
     return f

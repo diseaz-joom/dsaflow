@@ -61,11 +61,11 @@ class ListLine:
         r = '.'
         if self.b.upstream_resolved and self.is_merged_into(self.b.upstream_resolved):
             r = 'U'
-        if self.b.fork_resolved and self.is_merged_into(self.b.fork_resolved):
-            r = 'F'
         develop_ref = self.gc.refs.get(self.DEVELOP_REF, None)
         if self.b.ref != develop_ref and self.is_merged_into(develop_ref):
             r = 'D'
+        if self.b.fork_resolved and self.b.fork_resolved != self.b.upstream_resolved and self.is_merged_into(self.b.fork_resolved):
+            r = 'F'
         master_ref = self.gc.refs.get(self.MASTER_REF, None)
         if self.b.ref != master_ref and self.is_merged_into(master_ref):
             r = 'M'

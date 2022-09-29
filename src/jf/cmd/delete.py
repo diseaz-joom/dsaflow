@@ -25,7 +25,7 @@ class Error(Exception):
 
 @root.group.command()
 @click.option('--merged', type=click.Choice(('U', 'F', 'D', 'M')),
-              help='Remove all branches with this status or greater. Status ordering U->F->D->M.')
+              help='Remove all branches with this status or greater. Status ordering U->D->F->M.')
 @click.argument('branch', nargs=-1)
 def delete(branch: Sequence[str], merged: str):
     '''Remove a branch and all related branches.'''
@@ -91,13 +91,13 @@ class Filter:
         return bool(r and r.is_valid and self.gc.is_merged_into(self.b.sha, r.sha))
 
     def is_merge_status(self, status: str) -> bool:
-        all_stats = 'MDFU'
+        all_stats = 'MFDU'
         sts = ''
         if 'master' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('master')]):
             sts = all_stats
-        elif 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('develop')]):
-            sts = all_stats[1:]
         elif self.is_merged_into(self.b.fork_resolved):
+            sts = all_stats[1:]
+        elif 'develop' in self.gc.refs and self.is_merged_into(self.gc.refs[git.RefName('develop')]):
             sts = all_stats[2:]
         elif self.is_merged_into(self.b.upstream_resolved):
             sts = all_stats[3:]

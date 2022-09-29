@@ -124,6 +124,9 @@ class MaybeValueCfg(Generic[TValue], CfgPath):
     def set_str(self, s: str) -> None:
         self.set(self.t.from_string(s))
 
+    def unset(self) -> None:
+        self.cfg.unset(self.path)
+
 
 class ValueCfg(Generic[TValue], CfgPath):
     def __init__(self, base: CfgPath, path: List[str], t: ValueType[TValue], default: TValue) -> None:
