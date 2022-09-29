@@ -46,3 +46,28 @@ def config_cmd(branch: str, set_: str, value: str):
             if not k.startswith(jp):
                 continue
             print(f'{k} {v!r}')
+
+
+_NAME_TO_PROP = {
+    'self': 'this',
+    'raw': 'ldebug_resolved',
+    'pubraw': 'debug_resolved',
+    'clean': 'public_resolved',
+    'review': 'review_resolved',
+}
+
+
+@root.group.command('name')
+@click.option('-b', '--branch', default=git.current_branch, help='Branch to operate on')
+@click.option('-f', '--format', default='full', type=click.Choice(['full', 'short', 'branch', 'remote']), help='Representation to print')
+@click.argument('name', type=click.Choice(_NAME_TO_PROP.keys()))
+def name(branch, format, name):
+    '''Display various names for related branches.'''
+    gc = repo.Cache()
+    b = gc.branches[branch]
+    method_name = _NAME_TO_PROP[name]
+    ref = getattr(b, method_name)
+    if not ref:
+        return
+    text = getattr(ref, format)
+    click.echo(text)

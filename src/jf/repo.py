@@ -87,6 +87,10 @@ class Branch(branch.Generic):
         return branch.Generic(self.gc.cfg, self.ref)
 
     @property
+    def this(self) -> git.Ref:
+        return self.fullref
+
+    @property
     def sha(self) -> git.Sha:
         return self.fullref.sha
 

@@ -82,6 +82,10 @@ class RefName(str):
     def is_valid(self) -> bool:
         return False
 
+    @property
+    def full(self) -> 'RefName':
+        return RefName(self)
+
     @functools.cached_property
     def short(self) -> 'RefName':
         '''Returns shortest valid abbreviation for full ref_name.'''
